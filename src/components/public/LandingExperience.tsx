@@ -414,8 +414,8 @@ export function LandingExperience() {
                 Atmósferas de Mirador de Nogueche
               </h2>
             </div>
-            <span className="text-xs text-ocean/55 bg-ocean/5 px-3 py-1.5 rounded-full self-start sm:self-auto">
-              Fotografías referenciales de staging · listas para reemplazo en <code>src/lib/media.ts</code>
+            <span className="text-xs text-forest bg-forest/10 px-3 py-1.5 rounded-full self-start sm:self-auto font-medium">
+              Fotografías reales extraídas de la Guía Digital 2026
             </span>
           </div>
 

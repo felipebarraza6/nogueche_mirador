@@ -1,7 +1,9 @@
+import { assetPath } from "./utils";
+
 /**
- * Catálogo centralizado de imágenes temporales (placeholder de alta calidad).
- * Reemplazar cada URL por las fotografías reales de Cabaña Mirador de Nogueche
- * cuando estén listas (pueden apuntar a /photos/*.jpg en public/photos/).
+ * Catálogo centralizado de fotografías de Cabaña Mirador de Nogueche.
+ * Incluye fotografías reales extraídas de la Guía Digital 2026 (public/photos/)
+ * y tomas panorámicas complementarias de alta resolución.
  */
 
 export interface MediaAsset {
@@ -24,59 +26,67 @@ export const CABIN_MEDIA: Record<string, MediaAsset> = {
   },
   cabinExterior: {
     id: "cabin-exterior",
-    src: "https://images.unsplash.com/photo-1449158743715-0a90ebb6d2d8?auto=format&fit=crop&w=1600&q=85",
-    alt: "Cabaña de madera rodeada de vegetación costera",
-    caption: "Refugio íntimo entre el bosque y el Pacífico",
-    tag: "Arquitectura",
-    isPlaceholder: true,
+    src: assetPath("/photos/cabana-atardecer.png"),
+    alt: "Cabaña Mirador de Nogueche iluminada por el atardecer sobre terraza elevada",
+    caption: "Cabaña Mirador de Nogueche al atardecer",
+    tag: "Cabaña Oficial",
+    isPlaceholder: false,
   },
-  terraceView: {
-    id: "terrace-view",
-    src: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1600&q=85",
-    alt: "Dormitorio con cama king y vista luminosa",
-    caption: "Cama King diseñada para despertar frente al mar",
-    tag: "Descanso",
-    isPlaceholder: true,
+  cabinMist: {
+    id: "cabin-mist",
+    src: assetPath("/photos/cabana-bruma.png"),
+    alt: "Acceso con rampa de madera e iluminación cálida en bruma costera",
+    caption: "Atmósfera costera y acceso elevado en madera",
+    tag: "Cabaña Oficial",
+    isPlaceholder: false,
   },
   morningCoffee: {
     id: "morning-coffee",
-    src: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1400&q=85",
-    alt: "Café de prensa francesa y desayuno artesanal frente a la ventana",
-    caption: "Desayunos caseros y ritual de prensa francesa",
+    src: assetPath("/photos/desayuno-real.png"),
+    alt: "Bandeja de desayuno casero con café, jugo, frutas, huevos y pan",
+    caption: "Despierta mirando el mar con desayuno listo para ti",
     tag: "Desayunos",
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   coastalCliffs: {
     id: "coastal-cliffs",
-    src: "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1600&q=85",
-    alt: "Olas rompiendo sobre acantilados costeros del Pacífico sur",
-    caption: "A minutos de Caleta Rinconada, Iglesia de Piedra y La Lobería",
-    tag: "Entorno",
-    isPlaceholder: true,
+    src: assetPath("/photos/humedal-taucu.png"),
+    alt: "Costa de Cobquecura y Humedal Taucu a minutos de la cabaña",
+    caption: "A minutos de Humedal Taucu, Caleta Rinconada e Iglesia de Piedra",
+    tag: "Entorno Real",
+    isPlaceholder: false,
   },
-  firepitNight: {
-    id: "firepit-night",
-    src: "https://images.unsplash.com/photo-1475483768296-6163e08872a1?auto=format&fit=crop&w=1400&q=85",
-    alt: "Zona de fogón al aire libre bajo las estrellas",
-    caption: "Zona de fogón y terraza privada bajo el cielo de Ñuble",
-    tag: "Fogón",
-    isPlaceholder: true,
+  blueDoorView: {
+    id: "blue-door-view",
+    src: assetPath("/photos/entorno-puerta-azul.png"),
+    alt: "Paisaje costero y praderas de la comuna de Cobquecura",
+    caption: "Naturaleza y paisajes únicos de Cobquecura, Región de Ñuble",
+    tag: "Cobquecura",
+    isPlaceholder: false,
   },
-  petFriendlyBeach: {
-    id: "pet-friendly-beach",
-    src: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=1400&q=85",
-    alt: "Mascota disfrutando de un paseo costero",
-    caption: "Espacio Pet Friendly con normas pensadas para el cuidado mutuo",
-    tag: "Pet Friendly",
-    isPlaceholder: true,
+  locationMap: {
+    id: "location-map",
+    src: assetPath("/photos/mapa-nogueche.png"),
+    alt: "Mapa de ubicación de Mirador de Nogueche en la costa de Cobquecura",
+    caption: "Sector Nogueche sobre la Ruta del Mar (N-194)",
+    tag: "Ubicación",
+    isPlaceholder: false,
+  },
+  hostErica: {
+    id: "host-erica",
+    src: assetPath("/photos/anfitriona-erica.png"),
+    alt: "Erica Astudillo, anfitriona de Cabaña Mirador de Nogueche",
+    caption: "Erica Astudillo · Anfitriona",
+    tag: "Anfitriona",
+    isPlaceholder: false,
   },
 };
 
 export const GALLERY_ITEMS: MediaAsset[] = [
   CABIN_MEDIA.cabinExterior,
-  CABIN_MEDIA.terraceView,
-  CABIN_MEDIA.coastalCliffs,
+  CABIN_MEDIA.cabinMist,
   CABIN_MEDIA.morningCoffee,
-  CABIN_MEDIA.firepitNight,
-  CABIN_MEDIA.petFriendlyBeach,
+  CABIN_MEDIA.coastalCliffs,
+  CABIN_MEDIA.blueDoorView,
+  CABIN_MEDIA.locationMap,
 ];

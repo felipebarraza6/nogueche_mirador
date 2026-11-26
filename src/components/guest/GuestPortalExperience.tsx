@@ -39,6 +39,7 @@ import {
   TV_BOX_STEPS,
 } from "@/lib/guide-data";
 import { cn, formatCLP, formatDateLongES } from "@/lib/utils";
+import { CABIN_MEDIA } from "@/lib/media";
 import type { ReservationStatus } from "@/lib/api/types";
 
 const STATUS_META: Record<
@@ -358,14 +359,21 @@ export function GuestPortalExperience() {
 
             {/* Host Contact & Reviews */}
             <div className="rounded-3xl bg-ocean text-sand p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-cream">
-                    Tu Anfitriona
-                  </p>
-                  <h3 className="font-serif text-2xl">{PROPERTY_INFO.hostName}</h3>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3.5">
+                  <img
+                    src={CABIN_MEDIA.hostErica.src}
+                    alt={CABIN_MEDIA.hostErica.alt}
+                    className="w-12 h-12 rounded-2xl object-cover border border-cream/30 shadow-md"
+                  />
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-cream">
+                      Tu Anfitriona
+                    </p>
+                    <h3 className="font-serif text-2xl">{PROPERTY_INFO.hostName}</h3>
+                  </div>
                 </div>
-                <MessageCircle className="w-6 h-6 text-cream" />
+                <MessageCircle className="w-6 h-6 text-cream shrink-0" />
               </div>
               <p className="text-xs text-mist/85">
                 Estoy feliz de ayudarte en cualquier momento de tu estadía. Avísanos por
