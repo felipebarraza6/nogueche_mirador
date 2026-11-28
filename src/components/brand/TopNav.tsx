@@ -20,7 +20,7 @@ interface TopNavProps {
 }
 
 const NAV_LINKS = [
-  { href: "/", label: "La Cabaña", icon: Compass },
+  { href: "/", label: "Alojamientos", icon: Compass },
   { href: "/reservar", label: "Reservar", icon: CalendarCheck },
   { href: "/mi-reserva", label: "Portal Huésped", icon: KeyRound },
   { href: "/admin", label: "Admin", icon: LayoutDashboard },
@@ -37,6 +37,15 @@ export function TopNav({ tone = "transparent" }: TopNavProps) {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
 
   const isDarkSurface = tone === "dark" || (tone === "transparent" && !scrolled);
 
@@ -92,18 +101,28 @@ export function TopNav({ tone = "transparent" }: TopNavProps) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2",
+                  "relative px-4 py-2 rounded-full text-sm font-medium transition-colors duration-300 flex items-center gap-2",
                   active
                     ? isDarkSurface
-                      ? "bg-cream text-abyss shadow-sm"
-                      : "bg-forest text-sand shadow-sm"
+                      ? "text-abyss"
+                      : "text-sand"
                     : isDarkSurface
                     ? "text-sand/85 hover:text-cream hover:bg-white/10"
                     : "text-ocean/80 hover:text-ocean hover:bg-ocean/5"
                 )}
               >
-                <item.icon className="w-3.5 h-3.5" />
-                {item.label}
+                {active && (
+                  <motion.span
+                    layoutId="topnav-active-pill"
+                    transition={{ type: "spring", stiffness: 360, damping: 30 }}
+                    className={cn(
+                      "absolute inset-0 rounded-full -z-10 shadow-sm",
+                      isDarkSurface ? "bg-cream" : "bg-forest"
+                    )}
+                  />
+                )}
+                <item.icon className="w-3.5 h-3.5 relative z-10" />
+                <span className="relative z-10">{item.label}</span>
               </Link>
             );
           })}
@@ -136,37 +155,46 @@ export function TopNav({ tone = "transparent" }: TopNavProps) {
         </button>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer + Backdrop */}
       <AnimatePresence>
         {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
-            className="md:hidden mt-2 mx-4 rounded-2xl glass-light shadow-2xl overflow-hidden border border-ocean/10"
-          >
-            <div className="p-3 flex flex-col gap-1">
-              {NAV_LINKS.map((item) => (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileOpen(false)}
+              className="fixed inset-0 top-16 bg-abyss/45 backdrop-blur-xs md:hidden -z-10"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25 }}
+              className="md:hidden mt-2 mx-4 rounded-2xl glass-light shadow-2xl overflow-hidden border border-ocean/10"
+            >
+              <div className="p-3 flex flex-col gap-1">
+                {NAV_LINKS.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 px-4 min-h-[46px] rounded-xl text-ocean font-medium hover:bg-forest/10 transition-colors"
+                  >
+                    <item.icon className="w-4 h-4 text-sunset" />
+                    {item.label}
+                  </Link>
+                ))}
                 <Link
-                  key={item.href}
-                  href={item.href}
+                  href="/reservar"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-ocean font-medium hover:bg-forest/10 transition-colors"
+                  className="mt-2 min-h-[48px] flex items-center justify-center rounded-xl bg-sunset text-sand text-center font-semibold shadow-md"
                 >
-                  <item.icon className="w-4 h-4 text-sunset" />
-                  {item.label}
+                  Reservar Ahora
                 </Link>
-              ))}
-              <Link
-                href="/reservar"
-                onClick={() => setMobileOpen(false)}
-                className="mt-2 py-3 rounded-xl bg-sunset text-sand text-center font-semibold shadow-md"
-              >
-                Reservar Ahora
-              </Link>
-            </div>
-          </motion.div>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </header>

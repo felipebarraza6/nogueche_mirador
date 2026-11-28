@@ -2,14 +2,14 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { BREAKFAST_OPTIONS } from "@/lib/guide-data";
-import { addDaysISO, diffNights, eachNightISO, toISODate } from "@/lib/utils";
+import { ACCOMMODATIONS, BREAKFAST_OPTIONS, POLICIES_VERSION } from "@/lib/guide-data";
+import { addDaysISO, eachNightISO, toISODate } from "@/lib/utils";
 import type {
-  AuditEvent,
+  AccommodationId,
+  AccommodationRates,
   BreakfastChoice,
   DayAvailabilityState,
   ManualBlock,
-  PaymentMethod,
   PropertySettings,
   QuoteBreakdown,
   Reservation,
@@ -25,25 +25,47 @@ function nowISO(): string {
   return new Date().toISOString();
 }
 
+export function resolveBaseNightlyRate(
+  accommodationId: AccommodationId,
+  regularGuests: number,
+  rates: AccommodationRates
+): number {
+  if (accommodationId === "cabana-boutique") {
+    return rates.boutique1To2;
+  }
+  if (regularGuests <= 2) return rates.casa1To2;
+  if (regularGuests <= 4) return rates.casa3To4;
+  if (regularGuests === 5) return rates.casa5;
+  return rates.casa6;
+}
+
 function makeInitialData() {
   const today = toISODate(new Date());
   const d1In = addDaysISO(today, 3);
   const d1Out = addDaysISO(today, 6);
-  const d2In = addDaysISO(today, 10);
-  const d2Out = addDaysISO(today, 13);
-  const d3In = addDaysISO(today, 17);
-  const d3Out = addDaysISO(today, 19);
-  const d4In = addDaysISO(today, 23);
-  const d4Out = addDaysISO(today, 26);
+  const d2In = addDaysISO(today, 9);
+  const d2Out = addDaysISO(today, 12);
+  const d3In = addDaysISO(today, 15);
+  const d3Out = addDaysISO(today, 17);
+  const d4In = addDaysISO(today, 20);
+  const d4Out = addDaysISO(today, 23);
 
   const settings: PropertySettings = {
-    defaultMinNights: 2,
+    highSeasonStart: "2026-12-01",
+    highSeasonEnd: "2027-02-28",
+    highSeasonMinNights: 2,
     weekendMinNights: 2,
-    baseNightlyRate: 95000,
-    weekendNightlyRate: 115000,
-    childOverTwoNightlyFee: 15000,
-    holdDurationMinutes: 30,
+    offSeasonWeekdayMinNights: 1,
+    child2To6NightlyFee: 5000,
+    holdDurationMinutes: 15,
     reminderBeforeExpiryMinutes: 5,
+    rates: {
+      boutique1To2: 60000,
+      casa1To2: 65000,
+      casa3To4: 75000,
+      casa5: 85000,
+      casa6: 95000,
+    },
     bankDetails: {
       bankName: "Banco Estado / Cuenta Corriente",
       accountType: "Cuenta Corriente",
@@ -56,30 +78,23 @@ function makeInitialData() {
 
   const seasonRules: SeasonRule[] = [
     {
-      id: "season-verano",
-      name: "Temporada Alta Verano",
-      startDate: "2026-12-15",
-      endDate: "2027-03-15",
+      id: "season-alta-2026-2027",
+      accommodationId: "ALL",
+      name: "Temporada Alta 2026–2027 (01 dic – 28 feb)",
+      startDate: "2026-12-01",
+      endDate: "2027-02-28",
       minNights: 2,
-      nightlyRate: 125000,
+      rateModifierPercent: 0,
       isActive: true,
     },
     {
-      id: "season-baja-otono",
-      name: "Temporada Baja (1 noche permitida)",
-      startDate: "2026-05-01",
-      endDate: "2026-08-31",
+      id: "season-baja-semana",
+      accommodationId: "ALL",
+      name: "Resto del año · Lunes a Jueves (1 noche)",
+      startDate: "2027-03-01",
+      endDate: "2027-11-30",
       minNights: 1,
-      nightlyRate: 85000,
-      isActive: true,
-    },
-    {
-      id: "season-feriados",
-      name: "Fines de Semana Largos y Feriados",
-      startDate: addDaysISO(today, 14),
-      endDate: addDaysISO(today, 21),
-      minNights: 2,
-      nightlyRate: 120000,
+      rateModifierPercent: 0,
       isActive: true,
     },
   ];
@@ -87,8 +102,9 @@ function makeInitialData() {
   const manualBlocks: ManualBlock[] = [
     {
       id: "blk-maint-1",
-      startDate: addDaysISO(today, 28),
-      endDate: addDaysISO(today, 30),
+      accommodationId: "cabana-boutique",
+      startDate: addDaysISO(today, 26),
+      endDate: addDaysISO(today, 28),
       reason: "Mantención terraza y sellado de madera",
       source: "MAINTENANCE",
     },
@@ -99,23 +115,37 @@ function makeInitialData() {
       id: "res-demo-full",
       code: "NOG-2026-841",
       magicToken: "tok-demo-841",
+      accommodationId: "cabana-boutique",
+      accommodationName: "Cabaña Boutique",
       guestName: "Camila Morales",
+      guestDocument: "18.412.903-4",
       guestEmail: "camila.morales@ejemplo.cl",
       guestPhone: "+56 9 8412 3340",
+      guestCity: "Concepción",
       checkIn: d1In,
       checkOut: d1Out,
       nights: 3,
       adults: 2,
-      hasChildOverTwo: false,
-      bringsPet: true,
+      childrenUnder2: 0,
+      children2To6: 0,
+      children7Plus: 0,
+      companionNames: "Matías Fuentes (18.210.441-K)",
+      vehiclePlate: "KLRT-42",
       breakfastChoice: "especial",
       breakfastDays: 2,
-      specialRequests: "Llegamos cerca de las 15:30 hrs con nuestra perrita Luna.",
-      nightlySubtotal: 305000,
+      specialRequests: "Llegamos cerca de las 15:30 hrs.",
+      acceptedCancellationPolicy: true,
+      acceptedHouseRules: true,
+      acceptedPoliciesAt: new Date(Date.now() - 172800000).toISOString(),
+      acceptedPoliciesVersion: POLICIES_VERSION,
+      lockboxCode: "4829#",
+      nightlySubtotal: 180000, // 3 x $60.000
+      child2To6FeeTotal: 0,
+      breakfastTotal: 32000, // 2p x 2d x $8.000
       extrasSubtotal: 32000,
-      totalAmount: 337000,
-      depositAmount: 168500,
-      paidAmount: 337000,
+      totalAmount: 212000,
+      depositAmount: 106000,
+      paidAmount: 212000,
       balanceDue: 0,
       status: "CONFIRMED_FULL",
       paymentMethod: "FLOW_CREDIT",
@@ -130,22 +160,22 @@ function makeInitialData() {
           id: "ev-1",
           at: new Date(Date.now() - 172800000).toISOString(),
           actor: "GUEST",
-          title: "Reserva iniciada · Hold 30 min",
-          detail: "Bloqueo atómico creado en servidor por 3 noches.",
+          title: "Reserva iniciada · Hold 15 min (Cabaña Boutique)",
+          detail: "Bloqueo temporal creado por 3 noches ($60.000/noche). Políticas nov-2026-v1 aceptadas.",
         },
         {
           id: "ev-2",
           at: new Date(Date.now() - 172000000).toISOString(),
           actor: "FLOW_WEBHOOK",
           title: "Abono 50% confirmado (Flow Crédito)",
-          detail: "Pago aprobado por $168.500. Confirmación automática enviada.",
+          detail: "Pago aprobado por $106.000. Confirmación automática enviada.",
         },
         {
           id: "ev-3",
           at: new Date(Date.now() - 43200000).toISOString(),
           actor: "FLOW_WEBHOOK",
-          title: "Saldo 50% pagado · Acceso desbloqueado",
-          detail: "100% pagado. Indicaciones de llegada, llaves y Wi-Fi liberados.",
+          title: "Saldo 50% pagado · Código de caja de seguridad liberado",
+          detail: "100% pagado. Código de llaves, ubicación exacta y Wi-Fi desbloqueados.",
         },
       ],
     },
@@ -153,23 +183,38 @@ function makeInitialData() {
       id: "res-demo-deposit",
       code: "NOG-2026-512",
       magicToken: "tok-demo-512",
+      accommodationId: "casa-mirador",
+      accommodationName: "Casa Mirador",
       guestName: "Martín Sepúlveda",
+      guestDocument: "16.902.115-2",
       guestEmail: "martin.sepulveda@ejemplo.cl",
       guestPhone: "+56 9 7731 9021",
+      guestCity: "Chillán",
       checkIn: d2In,
       checkOut: d2Out,
       nights: 3,
-      adults: 2,
-      hasChildOverTwo: true,
-      bringsPet: false,
-      breakfastChoice: "clasico",
-      breakfastDays: 3,
-      nightlySubtotal: 305000,
-      extrasSubtotal: 75000,
-      totalAmount: 380000,
-      depositAmount: 190000,
-      paidAmount: 190000,
-      balanceDue: 190000,
+      adults: 3,
+      childrenUnder2: 0,
+      children2To6: 1,
+      children7Plus: 1,
+      childrenAges: "4 años y 9 años",
+      companionNames: "Sofía Rojas, Tomás Sepúlveda (9), Emilia Sepúlveda (4)",
+      vehiclePlate: "PBDX-88",
+      breakfastChoice: "none",
+      breakfastDays: 0,
+      acceptedCancellationPolicy: true,
+      acceptedHouseRules: true,
+      acceptedPoliciesAt: new Date(Date.now() - 36500000).toISOString(),
+      acceptedPoliciesVersion: POLICIES_VERSION,
+      lockboxCode: "7315#",
+      nightlySubtotal: 225000, // 4 regulares (3 adultos + 1 niño >=7) -> $75.000 x 3
+      child2To6FeeTotal: 15000, // 1 niño 2-6 compartiendo cama -> $5.000 x 3
+      breakfastTotal: 0,
+      extrasSubtotal: 15000,
+      totalAmount: 240000,
+      depositAmount: 120000,
+      paidAmount: 120000,
+      balanceDue: 120000,
       status: "CONFIRMED_DEPOSIT",
       paymentMethod: "FLOW_DEBIT",
       holdExpiresAt: new Date(Date.now() - 36000000).toISOString(),
@@ -183,15 +228,15 @@ function makeInitialData() {
           id: "ev-4",
           at: new Date(Date.now() - 36500000).toISOString(),
           actor: "GUEST",
-          title: "Reserva iniciada · Hold 30 min",
-          detail: "2 adultos + 1 niño > 2 años + desayuno clásico.",
+          title: "Reserva iniciada · Hold 15 min (Casa Mirador)",
+          detail: "3 adultos + 1 niño 7+ (tarifa 3-4 pers. $75.000/n) + 1 niño 4 años ($5.000/n).",
         },
         {
           id: "ev-5",
           at: new Date(Date.now() - 36000000).toISOString(),
           actor: "FLOW_WEBHOOK",
           title: "Abono 50% confirmado (Flow Débito)",
-          detail: "Abono $190.000 recibido. Saldo pendiente $190.000 antes de llaves.",
+          detail: "Abono $120.000 recibido. Saldo pendiente $120.000 antes del ingreso.",
         },
       ],
     },
@@ -199,26 +244,41 @@ function makeInitialData() {
       id: "res-demo-transfer",
       code: "NOG-2026-609",
       magicToken: "tok-demo-609",
+      accommodationId: "casa-mirador",
+      accommodationName: "Casa Mirador",
       guestName: "Valentina Rojas",
+      guestDocument: "19.334.812-7",
       guestEmail: "valentina.rojas@ejemplo.cl",
       guestPhone: "+56 9 6220 4418",
+      guestCity: "Santiago",
       checkIn: d3In,
       checkOut: d3Out,
       nights: 2,
-      adults: 2,
-      hasChildOverTwo: false,
-      bringsPet: false,
+      adults: 5,
+      childrenUnder2: 1,
+      children2To6: 0,
+      children7Plus: 0,
+      childrenAges: "1 año (sin costo)",
+      companionNames: "4 adultos acompañantes + bebé 1 año",
+      vehiclePlate: "RTHJ-19",
       breakfastChoice: "none",
       breakfastDays: 0,
-      nightlySubtotal: 240000,
+      acceptedCancellationPolicy: true,
+      acceptedHouseRules: true,
+      acceptedPoliciesAt: new Date(Date.now() - 10 * 60000).toISOString(),
+      acceptedPoliciesVersion: POLICIES_VERSION,
+      lockboxCode: "6194#",
+      nightlySubtotal: 170000, // 5 personas -> $85.000 x 2
+      child2To6FeeTotal: 0,
+      breakfastTotal: 0,
       extrasSubtotal: 0,
-      totalAmount: 240000,
-      depositAmount: 120000,
+      totalAmount: 170000,
+      depositAmount: 85000,
       paidAmount: 0,
-      balanceDue: 240000,
+      balanceDue: 170000,
       status: "PENDING_TRANSFER_VALIDATION",
       paymentMethod: "BANK_TRANSFER",
-      holdExpiresAt: new Date(Date.now() + 18 * 60000).toISOString(),
+      holdExpiresAt: new Date(Date.now() + 10 * 60000).toISOString(),
       reminder5mSent: false,
       balanceReminderSent: false,
       accessUnlocked: false,
@@ -226,27 +286,27 @@ function makeInitialData() {
         reference: "TRF-9984120",
         bankName: "Banco de Chile",
         holderName: "Valentina Rojas Fuentes",
-        amount: 120000,
-        uploadedAt: new Date(Date.now() - 9 * 60000).toISOString(),
+        amount: 85000,
+        uploadedAt: new Date(Date.now() - 7 * 60000).toISOString(),
         fileName: "comprobante_abono_nogueche.pdf",
         notes: "Transferencia realizada desde app Banco de Chile.",
       },
-      createdAt: new Date(Date.now() - 12 * 60000).toISOString(),
+      createdAt: new Date(Date.now() - 10 * 60000).toISOString(),
       auditLog: [
         {
           id: "ev-6",
-          at: new Date(Date.now() - 12 * 60000).toISOString(),
+          at: new Date(Date.now() - 10 * 60000).toISOString(),
           actor: "GUEST",
-          title: "Reserva iniciada · Hold 30 min",
-          detail: "Fechas bloqueadas temporalmente en servidor.",
+          title: "Reserva iniciada · Hold 15 min (Casa Mirador)",
+          detail: "5 adultos + 1 menor de 2 años sin costo. $85.000/noche x 2 noches.",
         },
         {
           id: "ev-7",
-          at: new Date(Date.now() - 9 * 60000).toISOString(),
+          at: new Date(Date.now() - 7 * 60000).toISOString(),
           actor: "GUEST",
           title: "Comprobante de transferencia subido",
           detail:
-            "Ref TRF-9984120 por $120.000. Auto-cancelación pausada hasta validación.",
+            "Ref TRF-9984120 por $85.000. Fechas protegidas hasta validación de administración.",
         },
       ],
     },
@@ -254,36 +314,50 @@ function makeInitialData() {
       id: "res-demo-hold",
       code: "NOG-2026-733",
       magicToken: "tok-demo-733",
+      accommodationId: "cabana-boutique",
+      accommodationName: "Cabaña Boutique",
       guestName: "Diego Contreras",
+      guestDocument: "17.881.209-K",
       guestEmail: "diego.contreras@ejemplo.cl",
       guestPhone: "+56 9 9104 8812",
+      guestCity: "Talca",
       checkIn: d4In,
       checkOut: d4Out,
       nights: 3,
       adults: 2,
-      hasChildOverTwo: false,
-      bringsPet: false,
+      childrenUnder2: 0,
+      children2To6: 0,
+      children7Plus: 0,
+      companionNames: "Fernanda Silva",
+      vehiclePlate: "GHYT-55",
       breakfastChoice: "clasico",
       breakfastDays: 2,
-      nightlySubtotal: 305000,
+      acceptedCancellationPolicy: true,
+      acceptedHouseRules: true,
+      acceptedPoliciesAt: new Date(Date.now() - 3 * 60000).toISOString(),
+      acceptedPoliciesVersion: POLICIES_VERSION,
+      lockboxCode: "3902#",
+      nightlySubtotal: 180000, // 3 x $60.000
+      child2To6FeeTotal: 0,
+      breakfastTotal: 20000, // 2p x 2d x $5.000
       extrasSubtotal: 20000,
-      totalAmount: 325000,
-      depositAmount: 162500,
+      totalAmount: 200000,
+      depositAmount: 100000,
       paidAmount: 0,
-      balanceDue: 325000,
+      balanceDue: 200000,
       status: "HOLD",
-      holdExpiresAt: new Date(Date.now() + 24 * 60000).toISOString(),
+      holdExpiresAt: new Date(Date.now() + 12 * 60000).toISOString(),
       reminder5mSent: false,
       balanceReminderSent: false,
       accessUnlocked: false,
-      createdAt: new Date(Date.now() - 6 * 60000).toISOString(),
+      createdAt: new Date(Date.now() - 3 * 60000).toISOString(),
       auditLog: [
         {
           id: "ev-8",
-          at: new Date(Date.now() - 6 * 60000).toISOString(),
+          at: new Date(Date.now() - 3 * 60000).toISOString(),
           actor: "GUEST",
-          title: "Hold temporal activo (30 min)",
-          detail: "Esperando pago de abono 50% ($162.500).",
+          title: "Hold temporal activo (15 min · Cabaña Boutique)",
+          detail: "Esperando pago de abono 50% ($100.000).",
         },
       ],
     },
@@ -293,18 +367,26 @@ function makeInitialData() {
 }
 
 export interface CreateHoldInput {
+  accommodationId: AccommodationId;
   checkIn: string;
   checkOut: string;
   adults: number;
-  hasChildOverTwo: boolean;
-  bringsPet: boolean;
+  childrenUnder2: number;
+  children2To6: number;
+  children7Plus: number;
+  childrenAges?: string;
+  companionNames?: string;
+  vehiclePlate?: string;
   breakfastChoice: BreakfastChoice;
   breakfastDays: number;
   guestName: string;
+  guestDocument: string;
   guestEmail: string;
   guestPhone: string;
-  guestRut?: string;
+  guestCity: string;
   specialRequests?: string;
+  acceptedCancellationPolicy: boolean;
+  acceptedHouseRules: boolean;
 }
 
 interface NoguecheStoreState {
@@ -315,16 +397,23 @@ interface NoguecheStoreState {
   activeHoldId: string | null;
 
   // Queries
-  getDayState: (isoDate: string) => DayAvailabilityState;
+  getDayState: (accommodationId: AccommodationId, isoDate: string) => DayAvailabilityState;
   getQuote: (
+    accommodationId: AccommodationId,
     checkIn: string,
     checkOut: string,
     adults: number,
-    hasChildOverTwo: boolean,
+    childrenUnder2: number,
+    children2To6: number,
+    children7Plus: number,
     breakfastChoice: BreakfastChoice,
     breakfastDays: number
   ) => QuoteBreakdown;
-  isRangeAvailable: (checkIn: string, checkOut: string) => {
+  isRangeAvailable: (
+    accommodationId: AccommodationId,
+    checkIn: string,
+    checkOut: string
+  ) => {
     ok: boolean;
     conflictDate?: string;
   };
@@ -349,7 +438,7 @@ interface NoguecheStoreState {
     proof: Omit<TransferProof, "uploadedAt">
   ) => void;
 
-  // Server-like Celery reconciliation
+  // Server-like reconciliation
   runExpirationSweep: () => void;
 
   // Admin Mutations
@@ -360,6 +449,7 @@ interface NoguecheStoreState {
   addManualBlock: (block: Omit<ManualBlock, "id">) => void;
   removeManualBlock: (blockId: string) => void;
   updateSettings: (partial: Partial<PropertySettings>) => void;
+  updateRates: (partial: Partial<AccommodationRates>) => void;
   upsertSeasonRule: (rule: Omit<SeasonRule, "id"> & { id?: string }) => void;
   toggleSeasonRule: (ruleId: string) => void;
   deleteSeasonRule: (ruleId: string) => void;
@@ -377,18 +467,22 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
       reservations: initial.reservations,
       activeHoldId: null,
 
-      getDayState: (isoDate: string): DayAvailabilityState => {
+      getDayState: (accommodationId: AccommodationId, isoDate: string): DayAvailabilityState => {
         const today = toISODate(new Date());
         if (isoDate < today) return "PAST";
 
         const { manualBlocks, reservations } = get();
         const isBlocked = manualBlocks.some(
-          (b) => isoDate >= b.startDate && isoDate < b.endDate
+          (b) =>
+            (b.accommodationId === "ALL" || b.accommodationId === accommodationId) &&
+            isoDate >= b.startDate &&
+            isoDate < b.endDate
         );
         if (isBlocked) return "BLOCKED";
 
         const activeConfirmed = reservations.some(
           (r) =>
+            r.accommodationId === accommodationId &&
             (r.status === "CONFIRMED_DEPOSIT" || r.status === "CONFIRMED_FULL") &&
             isoDate >= r.checkIn &&
             isoDate < r.checkOut
@@ -397,6 +491,7 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
 
         const activeHold = reservations.some(
           (r) =>
+            r.accommodationId === accommodationId &&
             (r.status === "HOLD" ||
               r.status === "PAYMENT_PROCESSING" ||
               r.status === "PENDING_TRANSFER_VALIDATION") &&
@@ -408,11 +503,11 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
         return "AVAILABLE";
       },
 
-      isRangeAvailable: (checkIn: string, checkOut: string) => {
+      isRangeAvailable: (accommodationId: AccommodationId, checkIn: string, checkOut: string) => {
         const nights = eachNightISO(checkIn, checkOut);
         if (nights.length === 0) return { ok: false };
         for (const night of nights) {
-          const state = get().getDayState(night);
+          const state = get().getDayState(accommodationId, night);
           if (state !== "AVAILABLE") {
             return { ok: false, conflictDate: night };
           }
@@ -421,93 +516,94 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
       },
 
       getQuote: (
+        accommodationId,
         checkIn,
         checkOut,
         adults,
-        hasChildOverTwo,
+        childrenUnder2,
+        children2To6,
+        children7Plus,
         breakfastChoice,
         breakfastDays
       ): QuoteBreakdown => {
         const { settings, seasonRules } = get();
+        const profile = ACCOMMODATIONS[accommodationId];
         const nightDates = eachNightISO(checkIn, checkOut);
         const nights = nightDates.length;
 
-        let minNightsRequired = settings.defaultMinNights;
-        let ruleAppliedName = `Tarifa general (mín. ${settings.defaultMinNights} noches)`;
+        // Niños >= 7 años cuentan en tarifa regular; niños 2-6 pagan $5.000/noche sin duplicar tarifa regular
+        const regularGuests = Math.max(1, adults + children7Plus);
+        const totalGuests = adults + children7Plus + children2To6 + childrenUnder2;
+        const exceedsCapacity =
+          regularGuests > profile.maxRegularGuests ||
+          adults + children7Plus + children2To6 > profile.maxTotalWithSharedChild;
+
+        const baseNightly = resolveBaseNightlyRate(
+          accommodationId,
+          Math.min(regularGuests, profile.maxRegularGuests),
+          settings.rates
+        );
+
+        let minNightsRequired = settings.offSeasonWeekdayMinNights;
+        let ruleAppliedName = "Tarifa vigente (resto del año, entre semana)";
         let nightlySubtotal = 0;
 
         for (const night of nightDates) {
           const d = new Date(`${night}T00:00:00`);
-          const day = d.getDay(); // 0 Sun, 5 Fri, 6 Sat
+          const day = d.getDay(); // 5 = Vie, 6 = Sáb
           const isWeekend = day === 5 || day === 6;
+          const isHighSeason =
+            night >= settings.highSeasonStart && night <= settings.highSeasonEnd;
 
-          const matchedRule = seasonRules.find(
-            (r) => r.isActive && night >= r.startDate && night <= r.endDate
-          );
-
-          if (matchedRule) {
-            nightlySubtotal += matchedRule.nightlyRate;
-            // Si hay regla de temporada baja (1 noche) y no es fin de semana, permitir 1 noche
-            if (matchedRule.minNights < minNightsRequired && !isWeekend) {
-              minNightsRequired = matchedRule.minNights;
-              ruleAppliedName = matchedRule.name;
-            } else if (matchedRule.minNights >= minNightsRequired) {
-              minNightsRequired = Math.max(minNightsRequired, matchedRule.minNights);
-              ruleAppliedName = matchedRule.name;
-            }
-          } else {
-            nightlySubtotal += isWeekend
-              ? settings.weekendNightlyRate
-              : settings.baseNightlyRate;
-            if (isWeekend) {
-              minNightsRequired = Math.max(
-                minNightsRequired,
-                settings.weekendMinNights
-              );
-              ruleAppliedName = `Fin de semana (mín. ${settings.weekendMinNights} noches)`;
-            }
-          }
-        }
-
-        // Si el usuario seleccionó solo 1 fecha aún o 1 noche, evaluar el checkIn
-        if (nights === 1 && nightDates[0]) {
-          const singleNight = nightDates[0];
-          const d = new Date(`${singleNight}T00:00:00`);
-          const isWeekend = d.getDay() === 5 || d.getDay() === 6;
           const matchedRule = seasonRules.find(
             (r) =>
-              r.isActive && singleNight >= r.startDate && singleNight <= r.endDate
+              r.isActive &&
+              (r.accommodationId === "ALL" || r.accommodationId === accommodationId) &&
+              night >= r.startDate &&
+              night <= r.endDate
           );
-          if (matchedRule && !isWeekend) {
-            minNightsRequired = matchedRule.minNights;
+
+          const modifier = matchedRule ? 1 + matchedRule.rateModifierPercent / 100 : 1;
+          nightlySubtotal += Math.round(baseNightly * modifier);
+
+          if (isHighSeason) {
+            minNightsRequired = Math.max(minNightsRequired, settings.highSeasonMinNights);
+            ruleAppliedName = "Temporada Alta (01 dic 2026 – 28 feb 2027 · mín. 2 noches)";
+          } else if (isWeekend) {
+            minNightsRequired = Math.max(minNightsRequired, settings.weekendMinNights);
+            ruleAppliedName = `Fin de semana (mín. ${settings.weekendMinNights} noches)`;
+          } else if (matchedRule) {
+            minNightsRequired = Math.max(minNightsRequired, matchedRule.minNights);
             ruleAppliedName = matchedRule.name;
           }
         }
 
-        const childFeeTotal = hasChildOverTwo
-          ? nights * settings.childOverTwoNightlyFee
-          : 0;
+        const child2To6FeeTotal = children2To6 * settings.child2To6NightlyFee * nights;
 
-        const breakfastMeta = BREAKFAST_OPTIONS.find(
-          (b) => b.id === breakfastChoice
-        );
-        const guestsForBreakfast = adults + (hasChildOverTwo ? 1 : 0);
+        const breakfastMeta = BREAKFAST_OPTIONS.find((b) => b.id === breakfastChoice);
+        const guestsForBreakfast = adults + children7Plus + children2To6;
         const breakfastTotal =
           breakfastMeta && breakfastDays > 0
             ? breakfastMeta.pricePerPerson * guestsForBreakfast * breakfastDays
             : 0;
 
-        const totalAmount = nightlySubtotal + childFeeTotal + breakfastTotal;
+        const totalAmount = nightlySubtotal + child2To6FeeTotal + breakfastTotal;
         const depositAmount = Math.round(totalAmount * 0.5);
         const balanceAmount = totalAmount - depositAmount;
 
         return {
+          accommodationId,
           nights,
           minNightsRequired,
           meetsMinNights: nights >= minNightsRequired,
           ruleAppliedName,
+          regularGuests,
+          totalGuests,
+          maxCapacity: profile.maxRegularGuests,
+          exceedsCapacity,
+          nightlyRatePerNight: nights > 0 ? Math.round(nightlySubtotal / nights) : baseNightly,
           nightlySubtotal,
-          childFeeTotal,
+          child2To6FeeTotal,
           breakfastTotal,
           totalAmount,
           depositAmount,
@@ -528,22 +624,45 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
 
       createHoldReservation: (input) => {
         get().runExpirationSweep();
-        const avail = get().isRangeAvailable(input.checkIn, input.checkOut);
+
+        if (!input.acceptedCancellationPolicy || !input.acceptedHouseRules) {
+          return {
+            ok: false,
+            error:
+              "Debes aceptar obligatoriamente las políticas de cancelación y las condiciones generales antes de continuar.",
+          };
+        }
+
+        const avail = get().isRangeAvailable(
+          input.accommodationId,
+          input.checkIn,
+          input.checkOut
+        );
         if (!avail.ok) {
           return {
             ok: false,
-            error: `La fecha ${avail.conflictDate || ""} acaba de ser bloqueada por otra reserva. Selecciona otro rango.`,
+            error: `La fecha ${avail.conflictDate || ""} no está disponible para ${ACCOMMODATIONS[input.accommodationId].name}. Selecciona otro rango.`,
           };
         }
 
         const quote = get().getQuote(
+          input.accommodationId,
           input.checkIn,
           input.checkOut,
           input.adults,
-          input.hasChildOverTwo,
+          input.childrenUnder2,
+          input.children2To6,
+          input.children7Plus,
           input.breakfastChoice,
           input.breakfastDays
         );
+
+        if (quote.exceedsCapacity) {
+          return {
+            ok: false,
+            error: `La cantidad de huéspedes supera la capacidad máxima de ${ACCOMMODATIONS[input.accommodationId].name} (${quote.maxCapacity} personas).`,
+          };
+        }
 
         if (!quote.meetsMinNights) {
           return {
@@ -557,26 +676,41 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
         const code = `NOG-2026-${Math.floor(100 + Math.random() * 900)}`;
         const magicToken = uid("tok").toLowerCase();
         const createdAt = nowISO();
+        const lockboxCode = `${Math.floor(1000 + Math.random() * 9000)}#`;
 
         const reservation: Reservation = {
           id,
           code,
           magicToken,
+          accommodationId: input.accommodationId,
+          accommodationName: ACCOMMODATIONS[input.accommodationId].name,
           guestName: input.guestName,
+          guestDocument: input.guestDocument,
           guestEmail: input.guestEmail,
           guestPhone: input.guestPhone,
-          guestRut: input.guestRut,
+          guestCity: input.guestCity,
           checkIn: input.checkIn,
           checkOut: input.checkOut,
           nights: quote.nights,
           adults: input.adults,
-          hasChildOverTwo: input.hasChildOverTwo,
-          bringsPet: input.bringsPet,
+          childrenUnder2: input.childrenUnder2,
+          children2To6: input.children2To6,
+          children7Plus: input.children7Plus,
+          childrenAges: input.childrenAges,
+          companionNames: input.companionNames,
+          vehiclePlate: input.vehiclePlate,
           breakfastChoice: input.breakfastChoice,
           breakfastDays: input.breakfastDays,
           specialRequests: input.specialRequests,
+          acceptedCancellationPolicy: input.acceptedCancellationPolicy,
+          acceptedHouseRules: input.acceptedHouseRules,
+          acceptedPoliciesAt: createdAt,
+          acceptedPoliciesVersion: POLICIES_VERSION,
+          lockboxCode,
           nightlySubtotal: quote.nightlySubtotal,
-          extrasSubtotal: quote.childFeeTotal + quote.breakfastTotal,
+          child2To6FeeTotal: quote.child2To6FeeTotal,
+          breakfastTotal: quote.breakfastTotal,
+          extrasSubtotal: quote.child2To6FeeTotal + quote.breakfastTotal,
           totalAmount: quote.totalAmount,
           depositAmount: quote.depositAmount,
           paidAmount: 0,
@@ -592,8 +726,8 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
               id: uid("ev"),
               at: createdAt,
               actor: "SYSTEM",
-              title: `Hold atómico de ${get().settings.holdDurationMinutes} min creado`,
-              detail: `Fechas ${input.checkIn} → ${input.checkOut} bloqueadas en servidor para evitar sobreventa.`,
+              title: `Hold temporal de ${get().settings.holdDurationMinutes} min creado (${ACCOMMODATIONS[input.accommodationId].name})`,
+              detail: `Fechas ${input.checkIn} → ${input.checkOut} bloqueadas. Condiciones versión ${POLICIES_VERSION} aceptadas por ${input.guestName}.`,
             },
           ],
         };
@@ -634,7 +768,6 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
             ),
           }));
 
-          // Simula llegada tardía de webhook Flow (3.5s) y confirmación idempotente
           setTimeout(() => {
             set((state) => ({
               reservations: state.reservations.map((r) =>
@@ -651,8 +784,8 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
                           id: uid("ev"),
                           at: nowISO(),
                           actor: "FLOW_WEBHOOK",
-                          title: "Webhook tardío recibido · Abono 50% confirmado",
-                          detail: `Pago verificado con Flow getStatus. Reserva confirmada y mensaje enviado a ${r.guestEmail}.`,
+                          title: "Webhook recibido · Abono 50% confirmado",
+                          detail: `Pago verificado. Reserva confirmada y notificación enviada a ${r.guestEmail}.`,
                         },
                       ],
                     }
@@ -680,7 +813,7 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
                       at: nowISO(),
                       actor: "FLOW_WEBHOOK",
                       title: `Abono 50% confirmado vía ${label}`,
-                      detail: `Confirmación automática enviada a ${r.guestEmail}. Saldo pendiente del 50% antes de entrega de llaves.`,
+                      detail: `Confirmación automática enviada a ${r.guestEmail}. Saldo pendiente del 50% antes del ingreso para entregar el código de caja de seguridad.`,
                     },
                   ],
                 }
@@ -704,8 +837,8 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
                       id: uid("ev"),
                       at: nowISO(),
                       actor: "GUEST",
-                      title: "Comprobante de transferencia enviado",
-                      detail: `Ref ${proof.reference} (${proof.bankName}). Fechas protegidas contra expiración mientras la anfitriona valida el abono.`,
+                      title: "Comprobante de transferencia adjuntado",
+                      detail: `Ref ${proof.reference} (${proof.bankName}). Reserva pendiente de validación por administración evitando duplicidad.`,
                     },
                   ],
                 }
@@ -734,7 +867,7 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
                       actor: "FLOW_WEBHOOK",
                       title: `Saldo 50% pagado vía ${label}`,
                       detail:
-                        "100% de la estadía saldada. Indicaciones de acceso, ubicación exacta y llaves desbloqueadas.",
+                        "100% de la estadía saldada. Código de caja de seguridad de llaves, enlace Google Maps y Wi-Fi liberados.",
                     },
                   ],
                 }
@@ -757,7 +890,7 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
                       at: nowISO(),
                       actor: "GUEST",
                       title: "Comprobante de saldo 50% enviado",
-                      detail: `Ref ${proof.reference} pendiente de validación por la anfitriona para liberar acceso y llaves.`,
+                      detail: `Ref ${proof.reference} pendiente de validación por la administración para liberar código de caja de seguridad.`,
                     },
                   ],
                 }
@@ -773,7 +906,6 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
         set((state) => ({
           reservations: state.reservations.map((r) => {
             if (r.status !== "HOLD") {
-              // Nunca cancelar automáticamente PAYMENT_PROCESSING ni PENDING_TRANSFER_VALIDATION
               return r;
             }
             const exp = new Date(r.holdExpiresAt).getTime();
@@ -789,9 +921,9 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
                     id: uid("ev"),
                     at: nowISO(),
                     actor: "SYSTEM",
-                    title: "Hold expirado · Fechas liberadas automáticamente",
+                    title: "Plazo de 15 min expirado · Fechas liberadas",
                     detail:
-                      "Se verificó que no existían pagos en Flow ni transferencias pendientes antes de liberar.",
+                      "No se concretó el pago dentro del plazo de 15 minutos. Fechas liberadas automáticamente.",
                   },
                 ],
               };
@@ -838,7 +970,7 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
                     actor: "ADMIN",
                     title: "Transferencia de abono 50% validada",
                     detail:
-                      "Reserva confirmada definitivamente. Mensaje de confirmación enviado al huésped.",
+                      "Reserva confirmada definitivamente. Notificación enviada al huésped.",
                   },
                 ],
               };
@@ -857,7 +989,7 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
                   actor: "ADMIN",
                   title: "Transferencia de saldo 50% validada",
                   detail:
-                    "Estadía 100% pagada. Indicaciones de acceso y llaves desbloqueadas en Portal del Huésped.",
+                    "Estadía 100% pagada. Código de caja de seguridad de llaves desbloqueado en Portal del Huésped.",
                 },
               ],
             };
@@ -904,8 +1036,8 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
                       id: uid("ev"),
                       at: nowISO(),
                       actor: "ADMIN",
-                      title: "Saldo 50% registrado por anfitriona",
-                      detail: "Acceso, ubicación exacta y llaves habilitados para el huésped.",
+                      title: "Saldo 50% registrado por administración",
+                      detail: "Código de caja de seguridad y acceso autónomo habilitados.",
                     },
                   ],
                 }
@@ -955,6 +1087,15 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
         }));
       },
 
+      updateRates: (partial) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            rates: { ...state.settings.rates, ...partial },
+          },
+        }));
+      },
+
       upsertSeasonRule: (rule) => {
         set((state) => {
           if (rule.id) {
@@ -965,10 +1106,7 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
             };
           }
           return {
-            seasonRules: [
-              ...state.seasonRules,
-              { ...rule, id: uid("season") },
-            ],
+            seasonRules: [...state.seasonRules, { ...rule, id: uid("season") }],
           };
         });
       },
@@ -999,7 +1137,7 @@ export const useNoguecheStore = create<NoguecheStoreState>()(
       },
     }),
     {
-      name: "mirador-nogueche-store-v1",
+      name: "mirador-nogueche-store-v2",
     }
   )
 );

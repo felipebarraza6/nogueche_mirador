@@ -66,21 +66,48 @@ body {
 }
 
 .glass-light {
-  background: rgba(247, 243, 238, 0.78);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(36, 54, 66, 0.08);
+  background: rgba(250, 248, 245, 0.72);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 8px 30px -12px rgba(20, 29, 36, 0.08);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(20px) saturate(135%);
+  -webkit-backdrop-filter: blur(20px) saturate(135%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 0 0 1px rgba(36, 54, 66, 0.05),
+    0 14px 40px -18px rgba(20, 29, 36, 0.09);
+}
+
+.glass-card-subtle {
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(16px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  box-shadow:
+    0 0 0 1px rgba(36, 54, 66, 0.045),
+    0 8px 24px -14px rgba(20, 29, 36, 0.06);
 }
 
 .glass-dark {
-  background: rgba(18, 28, 34, 0.62);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(242, 216, 184, 0.14);
+  background: rgba(14, 22, 28, 0.68);
+  backdrop-filter: blur(24px) saturate(135%);
+  -webkit-backdrop-filter: blur(24px) saturate(135%);
+  border: 1px solid rgba(242, 216, 184, 0.18);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 20px 60px -20px rgba(0, 0, 0, 0.45);
 }
 
 .text-gradient-sunset {
-  background: linear-gradient(110deg, #f2d8b8 0%, #e4a984 50%, #f7f3ee 100%);
+  background: linear-gradient(110deg, #ffe3c2 0%, #f0a477 48%, #fff6ec 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -97,12 +124,44 @@ body {
     transform: translateY(0px);
   }
   50% {
-    transform: translateY(-8px);
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes kenBurns {
+  0% {
+    transform: scale(1.03) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.11) translate3d(-1.2%, -0.8%, 0);
+  }
+  100% {
+    transform: scale(1.03) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes scrollBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
   }
 }
 
 .animate-float-slow {
   animation: floatSlow 7s ease-in-out infinite;
+}
+
+.animate-ken-burns {
+  animation: kenBurns 22s ease-in-out infinite;
+}
+
+.animate-scroll-bounce {
+  animation: scrollBounce 2.2s ease-in-out infinite;
 }
 
 /* Scrollbar elegante */

@@ -109,6 +109,12 @@ function CheckoutResultContent() {
         {/* Summary */}
         <div className="rounded-2xl bg-sand/70 p-5 space-y-2.5 text-sm border border-ocean/8">
           <div className="flex justify-between">
+            <span className="text-ocean/65">Alojamiento</span>
+            <span className="font-semibold text-ocean">
+              {reservation.accommodationName}
+            </span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-ocean/65">Fechas</span>
             <span className="font-semibold text-ocean">
               {formatDateES(reservation.checkIn)} → {formatDateES(reservation.checkOut)} (

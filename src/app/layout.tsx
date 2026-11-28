@@ -17,15 +17,15 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Mirador de Nogueche · Cabaña frente al mar en Cobquecura",
+  title: "Mirador de Nogueche · Cabaña Boutique y Casa Mirador en Cobquecura",
   description:
-    "Reserva directa y automatizada en Cabaña Mirador de Nogueche, Cobquecura, Región de Ñuble. Disponibilidad en tiempo real, abono 50% online y guía digital de estadía.",
+    "Reserva directa en Mirador de Nogueche, Cobquecura, Región de Ñuble. Cabaña Boutique (1–2 pers.) y Casa Mirador (1–6 pers.) a 5 min caminando de la playa.",
   keywords: [
     "Mirador de Nogueche",
-    "Cabaña Cobquecura",
-    "Alojamiento frente al mar Ñuble",
+    "Cabaña Boutique Cobquecura",
+    "Casa Mirador Cobquecura",
+    "Alojamiento junto al mar Ñuble",
     "Reservas Cobquecura",
-    "Pet friendly Cobquecura",
   ],
 };
 

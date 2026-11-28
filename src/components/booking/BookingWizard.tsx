@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  Ban,
   Building2,
   Calendar,
   Check,
@@ -15,23 +16,33 @@ import {
   Coffee,
   Copy,
   CreditCard,
+  FileText,
   FileUp,
   Info,
-  PawPrint,
+  Minus,
+  Plus,
   ShieldCheck,
   Sparkles,
   Users,
+  X,
 } from "lucide-react";
 import { AvailabilityCalendar } from "./AvailabilityCalendar";
+import { ScrollReveal } from "@/components/motion/ScrollReveal";
 import { useNoguecheStore } from "@/lib/api/demo-store";
-import type { BreakfastChoice, PaymentMethod } from "@/lib/api/types";
-import { BREAKFAST_OPTIONS, PET_FRIENDLY_RULES } from "@/lib/guide-data";
+import type { AccommodationId, BreakfastChoice, PaymentMethod } from "@/lib/api/types";
+import {
+  ACCOMMODATIONS,
+  ACCOMMODATION_LIST,
+  BREAKFAST_OPTIONS,
+  HOUSE_RULES,
+  OFFICIAL_POLICIES,
+} from "@/lib/guide-data";
 import { cn, formatCLP, formatDateES } from "@/lib/utils";
 
 const STEPS = [
-  { id: 1, label: "Fechas" },
-  { id: 2, label: "Estadía y Datos" },
-  { id: 3, label: "Bloqueo 30 min & Abono 50%" },
+  { id: 1, label: "Alojamiento y Fechas" },
+  { id: 2, label: "Huéspedes y Registro" },
+  { id: 3, label: "Bloqueo 15 min & Abono 50%" },
 ];
 
 export function BookingWizard() {
@@ -46,27 +57,50 @@ export function BookingWizard() {
   const submitDepositTransfer = useNoguecheStore((s) => s.submitDepositTransfer);
   const runExpirationSweep = useNoguecheStore((s) => s.runExpirationSweep);
 
+  const initialUnit: AccommodationId =
+    searchParams.get("unit") === "casa-mirador" ? "casa-mirador" : "cabana-boutique";
+
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [accommodationId, setAccommodationId] = useState<AccommodationId>(initialUnit);
   const [checkIn, setCheckIn] = useState<string | null>(
     searchParams.get("checkIn") || null
   );
   const [checkOut, setCheckOut] = useState<string | null>(
     searchParams.get("checkOut") || null
   );
+
+  // Guest composition (exact policy)
+  const initialAdults = Number(searchParams.get("adults")) || 2;
   const [adults, setAdults] = useState<number>(
-    Number(searchParams.get("adults")) === 1 ? 1 : 2
+    Math.min(
+      Math.max(1, initialAdults),
+      ACCOMMODATIONS[initialUnit].maxRegularGuests
+    )
   );
-  const [hasChildOverTwo, setHasChildOverTwo] = useState(false);
-  const [bringsPet, setBringsPet] = useState(false);
-  const [petAccepted, setPetAccepted] = useState(false);
+  const [childrenUnder2, setChildrenUnder2] = useState<number>(0);
+  const [children2To6, setChildren2To6] = useState<number>(0);
+  const [children7Plus, setChildren7Plus] = useState<number>(0);
+  const [childrenAges, setChildrenAges] = useState<string>("");
+
+  // Optional breakfast
   const [breakfastChoice, setBreakfastChoice] = useState<BreakfastChoice>("none");
   const [breakfastDays, setBreakfastDays] = useState(0);
 
-  // Guest info
+  // Official Guest Registration Form
   const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
+  const [guestDocument, setGuestDocument] = useState("");
   const [guestPhone, setGuestPhone] = useState("+56 9 ");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestCity, setGuestCity] = useState("");
+  const [companionNames, setCompanionNames] = useState("");
+  const [vehiclePlate, setVehiclePlate] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
+
+  // Mandatory unchecked policy checkboxes
+  const [acceptedCancellation, setAcceptedCancellation] = useState(false);
+  const [acceptedHouseRules, setAcceptedHouseRules] = useState(false);
+  const [showPoliciesModal, setShowPoliciesModal] = useState(false);
+
   const [formError, setFormError] = useState<string | null>(null);
 
   // Active hold in step 3
@@ -81,8 +115,12 @@ export function BookingWizard() {
   const [transferHolder, setTransferHolder] = useState("");
   const [transferFileName, setTransferFileName] = useState("comprobante_abono_50.pdf");
 
-  // Live countdown
-  const [secondsLeft, setSecondsLeft] = useState<number>(30 * 60);
+  // Live countdown (15 min)
+  const [secondsLeft, setSecondsLeft] = useState<number>(
+    settings.holdDurationMinutes * 60
+  );
+
+  const profile = ACCOMMODATIONS[accommodationId];
 
   const activeReservation = useMemo(
     () => reservations.find((r) => r.id === holdId) || null,
@@ -110,17 +148,44 @@ export function BookingWizard() {
     return () => clearInterval(timer);
   }, [activeReservation, runExpirationSweep]);
 
+  const handleUnitChange = (nextUnit: AccommodationId) => {
+    setAccommodationId(nextUnit);
+    setCheckIn(null);
+    setCheckOut(null);
+    setFormError(null);
+    const maxReg = ACCOMMODATIONS[nextUnit].maxRegularGuests;
+    if (adults > maxReg) setAdults(maxReg);
+    if (nextUnit === "cabana-boutique") {
+      setChildren7Plus(0);
+      if (children2To6 > 1) setChildren2To6(1);
+    }
+  };
+
   const quote = useMemo(() => {
     if (!checkIn || !checkOut) return null;
     return getQuote(
+      accommodationId,
       checkIn,
       checkOut,
       adults,
-      hasChildOverTwo,
+      childrenUnder2,
+      children2To6,
+      children7Plus,
       breakfastChoice,
       breakfastChoice === "none" ? 0 : Math.min(breakfastDays || 1, 30)
     );
-  }, [checkIn, checkOut, adults, hasChildOverTwo, breakfastChoice, breakfastDays, getQuote]);
+  }, [
+    accommodationId,
+    checkIn,
+    checkOut,
+    adults,
+    childrenUnder2,
+    children2To6,
+    children7Plus,
+    breakfastChoice,
+    breakfastDays,
+    getQuote,
+  ]);
 
   useEffect(() => {
     if (quote && breakfastChoice !== "none" && breakfastDays === 0) {
@@ -131,10 +196,12 @@ export function BookingWizard() {
     }
   }, [breakfastChoice, quote, breakfastDays]);
 
+  const hasAnyChildren = childrenUnder2 + children2To6 + children7Plus > 0;
+
   const handleContinueStep2 = () => {
     setFormError(null);
     if (!checkIn || !checkOut || !quote) {
-      setFormError("Selecciona fechas de llegada y salida en el calendario.");
+      setFormError("Selecciona fechas de ingreso y salida en el calendario.");
       return;
     }
     if (!quote.meetsMinNights) {
@@ -149,28 +216,61 @@ export function BookingWizard() {
   const handleCreateHold = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-    if (!checkIn || !checkOut) return;
-    if (!guestName.trim() || !guestEmail.trim() || guestPhone.trim().length < 8) {
-      setFormError("Completa tu nombre, correo electrónico y teléfono WhatsApp.");
+    if (!checkIn || !checkOut || !quote) return;
+
+    if (quote.exceedsCapacity) {
+      setFormError(
+        `La cantidad de huéspedes supera la capacidad máxima de ${profile.name} (${profile.maxRegularGuests} personas).`
+      );
       return;
     }
-    if (bringsPet && !petAccepted) {
-      setFormError("Debes aceptar las normas Pet Friendly para continuar.");
+
+    if (
+      !guestName.trim() ||
+      !guestDocument.trim() ||
+      !guestEmail.trim() ||
+      guestPhone.trim().length < 8 ||
+      !guestCity.trim()
+    ) {
+      setFormError(
+        "Completa todos los campos obligatorios del titular (Nombre, RUT/Pasaporte, Teléfono, Correo y Ciudad)."
+      );
+      return;
+    }
+
+    if (hasAnyChildren && !childrenAges.trim()) {
+      setFormError("Indica las edades de los niños que te acompañan.");
+      return;
+    }
+
+    if (!acceptedCancellation || !acceptedHouseRules) {
+      setFormError(
+        "Debes marcar ambas casillas de aceptación obligatoria de políticas y normas de convivencia."
+      );
       return;
     }
 
     const res = createHoldReservation({
+      accommodationId,
       checkIn,
       checkOut,
       adults,
-      hasChildOverTwo,
-      bringsPet,
+      childrenUnder2,
+      children2To6,
+      children7Plus,
+      childrenAges: childrenAges.trim() || undefined,
+      companionNames: companionNames.trim() || undefined,
+      vehiclePlate: vehiclePlate.trim().toUpperCase() || undefined,
       breakfastChoice,
       breakfastDays: breakfastChoice === "none" ? 0 : breakfastDays,
       guestName: guestName.trim(),
+      guestDocument: guestDocument.trim(),
       guestEmail: guestEmail.trim(),
       guestPhone: guestPhone.trim(),
+      guestCity: guestCity.trim(),
       specialRequests: specialRequests.trim() || undefined,
+      acceptedCancellationPolicy: acceptedCancellation,
+      acceptedHouseRules: acceptedHouseRules,
     });
 
     if (!res.ok) {
@@ -216,18 +316,19 @@ export function BookingWizard() {
 
   const mins = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const secs = String(secondsLeft % 60).padStart(2, "0");
-  const isWarning5m = secondsLeft <= settings.reminderBeforeExpiryMinutes * 60 && secondsLeft > 0;
+  const isWarning5m =
+    secondsLeft <= settings.reminderBeforeExpiryMinutes * 60 && secondsLeft > 0;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-20">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24">
       {/* Header + Progress Stepper */}
-      <div className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+      <ScrollReveal y={20} className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
           <span className="text-xs uppercase tracking-[0.26em] text-sunset font-semibold">
             Motor de Reservas · Mirador de Nogueche
           </span>
           <h1 className="font-serif text-4xl sm:text-5xl font-semibold text-ocean mt-1">
-            Reserva tu estadía frente al mar
+            Reserva directa junto al mar
           </h1>
         </div>
 
@@ -261,22 +362,19 @@ export function BookingWizard() {
                   </span>
                   <span className="hidden sm:inline">{s.label}</span>
                 </div>
-                {idx < STEPS.length - 1 && (
-                  <div className="w-4 sm:w-8 h-[1px] bg-ocean/15" />
-                )}
+                {idx < STEPS.length - 1 && <div className="w-4 sm:w-8 h-[1px] bg-ocean/15" />}
               </div>
             );
           })}
         </div>
-      </div>
+      </ScrollReveal>
 
       {/* Main Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Main Content */}
         <div className="lg:col-span-8">
           <AnimatePresence mode="wait">
             {/* =============================================
-                STEP 1: CALENDARIO EN TIEMPO REAL
+                STEP 1: ALOJAMIENTO + CALENDARIO INDEPENDIENTE
                ============================================= */}
             {step === 1 && (
               <motion.div
@@ -287,7 +385,51 @@ export function BookingWizard() {
                 transition={{ duration: 0.3 }}
                 className="space-y-5"
               >
+                {/* Accommodation Selector */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {ACCOMMODATION_LIST.map((acc) => {
+                    const selected = accommodationId === acc.id;
+                    const priceFrom =
+                      acc.id === "cabana-boutique"
+                        ? settings.rates.boutique1To2
+                        : settings.rates.casa1To2;
+                    return (
+                      <motion.button
+                        key={acc.id}
+                        type="button"
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.99 }}
+                        onClick={() => handleUnitChange(acc.id)}
+                        className={cn(
+                          "rounded-3xl p-4 text-left transition-all flex items-center gap-4 cursor-pointer",
+                          selected
+                            ? "glass-card ring-2 ring-forest/30"
+                            : "glass-card-subtle hover:bg-white/75"
+                        )}
+                      >
+                        <img
+                          src={acc.cover.src}
+                          alt={acc.cover.alt}
+                          className="w-20 h-20 rounded-2xl object-cover shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-sunset block">
+                            {acc.capacityLabel}
+                          </span>
+                          <p className="font-serif text-2xl font-semibold text-ocean leading-tight">
+                            {acc.name}
+                          </p>
+                          <p className="text-xs text-ocean/70 mt-0.5">
+                            Desde <strong>{formatCLP(priceFrom)}</strong> / noche
+                          </p>
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+
                 <AvailabilityCalendar
+                  accommodationId={accommodationId}
                   checkIn={checkIn}
                   checkOut={checkOut}
                   onSelectRange={(ci, co) => {
@@ -300,16 +442,15 @@ export function BookingWizard() {
                 {/* Min nights info banner */}
                 <div className="rounded-2xl bg-forest/8 border border-forest/15 p-4 flex items-start gap-3 text-sm text-ocean">
                   <Info className="w-5 h-5 text-forest shrink-0 mt-0.5" />
-                  <div>
+                  <div className="text-xs sm:text-sm text-ocean/80 space-y-1">
                     <p className="font-semibold text-forest">
-                      Política de estadía mínima automática
+                      Condiciones de estadía mínima y horarios
                     </p>
-                    <p className="text-xs sm:text-sm text-ocean/75 mt-0.5">
-                      Por defecto se requieren{" "}
-                      <strong>{settings.defaultMinNights} noches mínimas</strong> (temporada
-                      alta, fines de semana y feriados). En rangos de temporada baja
-                      configurados por la anfitriona el sistema habilita estadías de 1 noche
-                      automáticamente.
+                    <p>
+                      Mínimo <strong>2 noches</strong> durante toda la temporada alta (01 dic
+                      2026 – 28 feb 2027) y los fines de semana del resto del año. Check-in
+                      desde las <strong>15:00 hrs</strong> · Check-out hasta las{" "}
+                      <strong>12:00 hrs</strong>.
                     </p>
                   </div>
                 </div>
@@ -328,7 +469,7 @@ export function BookingWizard() {
                     disabled={!checkIn || !checkOut || !quote?.meetsMinNights}
                     className="px-7 py-3.5 rounded-full bg-sunset text-sand font-semibold text-sm flex items-center gap-2 shadow-lg hover:bg-forest disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
                   >
-                    Continuar a Huéspedes y Datos
+                    Continuar a Huéspedes y Registro
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -336,7 +477,7 @@ export function BookingWizard() {
             )}
 
             {/* =============================================
-                STEP 2: HUÉSPEDES, EXTRAS Y DATOS
+                STEP 2: HUÉSPEDES, REGISTRO OFICIAL Y ACEPTACIÓN
                ============================================= */}
             {step === 2 && (
               <motion.form
@@ -348,47 +489,120 @@ export function BookingWizard() {
                 transition={{ duration: 0.3 }}
                 className="space-y-6"
               >
-                {/* Guests & Extras */}
-                <div className="rounded-3xl bg-white border border-ocean/10 p-6 sm:p-7 shadow-sm space-y-6">
-                  <h2 className="font-serif text-2xl font-semibold text-ocean flex items-center gap-2">
-                    <Users className="w-5 h-5 text-sunset" /> Configuración de tu estadía
-                  </h2>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <label className="rounded-2xl bg-sand/70 p-4 border border-ocean/10">
-                      <span className="text-xs font-semibold uppercase tracking-wider text-ocean/60">
-                        Adultos (Cama King)
-                      </span>
-                      <select
-                        value={adults}
-                        onChange={(e) => setAdults(Number(e.target.value))}
-                        className="mt-2 w-full bg-white rounded-xl px-3 py-2.5 text-sm font-medium border border-ocean/15"
-                      >
-                        <option value={1}>1 adulto</option>
-                        <option value={2}>2 adultos (Pareja)</option>
-                      </select>
-                    </label>
-
-                    <label className="rounded-2xl bg-sand/70 p-4 border border-ocean/10 flex items-center justify-between gap-3 cursor-pointer">
-                      <div>
-                        <span className="text-sm font-semibold text-ocean block">
-                          Niño adicional (&gt; 2 años)
-                        </span>
-                        <span className="text-xs text-ocean/65">
-                          Misma cama king · +{formatCLP(settings.childOverTwoNightlyFee)} / noche
-                        </span>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={hasChildOverTwo}
-                        onChange={(e) => setHasChildOverTwo(e.target.checked)}
-                        className="w-5 h-5 accent-forest"
-                      />
-                    </label>
+                {/* Guests & Children Policy */}
+                <div className="rounded-3xl glass-card p-6 sm:p-7 space-y-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="font-serif text-2xl font-semibold text-ocean flex items-center gap-2">
+                      <Users className="w-5 h-5 text-sunset" /> Huéspedes en {profile.name}
+                    </h2>
+                    <span className="text-xs font-semibold px-3 py-1 rounded-full bg-sand text-ocean">
+                      Capacidad máx.: {profile.capacityLabel}
+                    </span>
                   </div>
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      {
+                        label: "Adultos",
+                        sub: "Tarifa regular por tramo",
+                        val: adults,
+                        min: 1,
+                        max: profile.maxRegularGuests,
+                        onChange: (next: number) => {
+                          setAdults(next);
+                          if (next + children7Plus > profile.maxRegularGuests) {
+                            setChildren7Plus(Math.max(0, profile.maxRegularGuests - next));
+                          }
+                        },
+                      },
+                      {
+                        label: "Niños menores de 2 años",
+                        sub: "Sin costo adicional (no hay cunas)",
+                        val: childrenUnder2,
+                        min: 0,
+                        max: accommodationId === "casa-mirador" ? 2 : 1,
+                        onChange: setChildrenUnder2,
+                      },
+                      {
+                        label: "Niños de 2 a 6 años",
+                        sub: `+${formatCLP(settings.child2To6NightlyFee)}/noche compartiendo cama`,
+                        val: children2To6,
+                        min: 0,
+                        max: accommodationId === "casa-mirador" ? 2 : 1,
+                        onChange: setChildren2To6,
+                      },
+                      {
+                        label: "Niños desde 7 años",
+                        sub: "Cuenta como tarifa regular",
+                        val: children7Plus,
+                        min: 0,
+                        max: Math.max(0, profile.maxRegularGuests - adults),
+                        onChange: setChildren7Plus,
+                      },
+                    ].map((row) => (
+                      <div
+                        key={row.label}
+                        className="rounded-2xl bg-sand/70 p-4 border border-ocean/10 flex items-center justify-between gap-3"
+                      >
+                        <div>
+                          <span className="text-sm font-semibold text-ocean block">
+                            {row.label}
+                          </span>
+                          <span className="text-[11px] text-ocean/65 block mt-0.5">
+                            {row.sub}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <motion.button
+                            type="button"
+                            whileTap={{ scale: 0.9 }}
+                            disabled={row.val <= row.min}
+                            onClick={() => row.onChange(Math.max(row.min, row.val - 1))}
+                            aria-label={`Disminuir ${row.label}`}
+                            className="w-10 h-10 rounded-full bg-white border border-ocean/20 text-ocean flex items-center justify-center hover:border-forest hover:text-forest disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer shadow-xs"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </motion.button>
+                          <span className="w-6 text-center font-bold text-base text-ocean tabular-nums">
+                            {row.val}
+                          </span>
+                          <motion.button
+                            type="button"
+                            whileTap={{ scale: 0.9 }}
+                            disabled={row.val >= row.max}
+                            onClick={() => row.onChange(Math.min(row.max, row.val + 1))}
+                            aria-label={`Aumentar ${row.label}`}
+                            className="w-10 h-10 rounded-full bg-forest text-sand flex items-center justify-center hover:bg-sunset disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer shadow-xs"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </motion.button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-2xl bg-mist/35 border border-forest/15 px-4 py-3 text-xs text-ocean/80 flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      Menores de 2 años: <strong>gratis</strong> · 2 a 6 años:{" "}
+                      <strong>+{formatCLP(settings.child2To6NightlyFee)}/noche</strong>{" "}
+                      compartiendo cama existente · 7+ años: tarifa regular.{" "}
+                      <strong>No disponemos de cunas.</strong>
+                    </span>
+                  </div>
+
+                  {quote?.exceedsCapacity && (
+                    <div className="rounded-2xl bg-red-50 border border-red-200 p-3.5 text-xs text-red-800 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0" />
+                      <span>
+                        La cantidad seleccionada supera la capacidad máxima de {profile.name} (
+                        {profile.capacityLabel}). Ajusta el número de huéspedes o selecciona
+                        Casa Mirador.
+                      </span>
+                    </div>
+                  )}
+
                   {/* Breakfasts */}
-                  <div className="pt-2 border-t border-ocean/10">
+                  <div className="pt-3 border-t border-ocean/10">
                     <p className="text-sm font-semibold text-ocean flex items-center gap-2 mb-3">
                       <Coffee className="w-4 h-4 text-sunset" /> Servicio de Desayuno (opcional)
                     </p>
@@ -405,7 +619,7 @@ export function BookingWizard() {
                       >
                         <p className="font-semibold text-sm text-ocean">Sin desayuno</p>
                         <p className="text-xs text-ocean/60 mt-1">
-                          Cocina equipada + prensa francesa incluida
+                          Cocina equipada disponible
                         </p>
                       </button>
                       {BREAKFAST_OPTIONS.map((opt) => (
@@ -454,61 +668,29 @@ export function BookingWizard() {
                       </div>
                     )}
                   </div>
-
-                  {/* Pet Friendly */}
-                  <div className="pt-2 border-t border-ocean/10">
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <div className="flex items-center gap-2.5">
-                        <PawPrint className="w-4 h-4 text-forest" />
-                        <span className="text-sm font-semibold text-ocean">
-                          Viajo con mascota (Pet Friendly)
-                        </span>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={bringsPet}
-                        onChange={(e) => setBringsPet(e.target.checked)}
-                        className="w-5 h-5 accent-forest"
-                      />
-                    </label>
-                    {bringsPet && (
-                      <div className="mt-3 rounded-2xl bg-mist/40 border border-forest/15 p-4 space-y-2 text-xs text-ocean/80">
-                        <ul className="list-disc pl-4 space-y-1">
-                          {PET_FRIENDLY_RULES.conditions.map((c) => (
-                            <li key={c}>{c}</li>
-                          ))}
-                        </ul>
-                        <p className="text-[11px] text-ocean/65">
-                          Razas no admitidas: {PET_FRIENDLY_RULES.restrictedBreeds.join(", ")}.
-                        </p>
-                        <label className="flex items-center gap-2 pt-2 font-semibold text-forest cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={petAccepted}
-                            onChange={(e) => setPetAccepted(e.target.checked)}
-                            className="w-4 h-4 accent-forest"
-                          />
-                          Confirmo que mi mascota cumple estas condiciones.
-                        </label>
-                      </div>
-                    )}
-                  </div>
                 </div>
 
-                {/* Guest Details */}
-                <div className="rounded-3xl bg-white border border-ocean/10 p-6 sm:p-7 shadow-sm space-y-4">
-                  <h2 className="font-serif text-2xl font-semibold text-ocean">
-                    Datos del Huésped Titular
-                  </h2>
+                {/* Official Guest Registration Form */}
+                <div className="rounded-3xl glass-card p-6 sm:p-7 space-y-4">
+                  <div>
+                    <h2 className="font-serif text-2xl font-semibold text-ocean">
+                      Formulario de Registro de Huéspedes
+                    </h2>
+                    <p className="text-xs text-ocean/65 mt-0.5">
+                      Los datos quedan resguardados en el panel de administración con acceso
+                      restringido.
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <label className="block">
                       <span className="text-xs font-semibold uppercase tracking-wider text-ocean/60">
-                        Nombre y Apellido *
+                        Nombre completo del titular *
                       </span>
                       <input
                         type="text"
                         required
-                        placeholder="Ej. Carolina Méndez"
+                        placeholder="Ej. Carolina Méndez Ríos"
                         value={guestName}
                         onChange={(e) => setGuestName(e.target.value)}
                         className="mt-1.5 w-full rounded-xl border border-ocean/15 bg-sand/40 px-4 py-3 text-sm focus:outline-none focus:border-forest"
@@ -516,20 +698,20 @@ export function BookingWizard() {
                     </label>
                     <label className="block">
                       <span className="text-xs font-semibold uppercase tracking-wider text-ocean/60">
-                        Correo Electrónico *
+                        RUT o Pasaporte *
                       </span>
                       <input
-                        type="email"
+                        type="text"
                         required
-                        placeholder="nombre@correo.cl"
-                        value={guestEmail}
-                        onChange={(e) => setGuestEmail(e.target.value)}
+                        placeholder="Ej. 18.412.903-4"
+                        value={guestDocument}
+                        onChange={(e) => setGuestDocument(e.target.value)}
                         className="mt-1.5 w-full rounded-xl border border-ocean/15 bg-sand/40 px-4 py-3 text-sm focus:outline-none focus:border-forest"
                       />
                     </label>
                     <label className="block">
                       <span className="text-xs font-semibold uppercase tracking-wider text-ocean/60">
-                        Teléfono / WhatsApp *
+                        Teléfono de contacto (WhatsApp) *
                       </span>
                       <input
                         type="tel"
@@ -542,17 +724,140 @@ export function BookingWizard() {
                     </label>
                     <label className="block">
                       <span className="text-xs font-semibold uppercase tracking-wider text-ocean/60">
-                        Hora estimada de llegada / Notas
+                        Correo electrónico *
+                      </span>
+                      <input
+                        type="email"
+                        required
+                        placeholder="nombre@correo.cl"
+                        value={guestEmail}
+                        onChange={(e) => setGuestEmail(e.target.value)}
+                        className="mt-1.5 w-full rounded-xl border border-ocean/15 bg-sand/40 px-4 py-3 text-sm focus:outline-none focus:border-forest"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-ocean/60">
+                        Ciudad de procedencia *
                       </span>
                       <input
                         type="text"
-                        placeholder="Ej. Llegamos a las 16:00 hrs"
+                        required
+                        placeholder="Ej. Concepción / Santiago"
+                        value={guestCity}
+                        onChange={(e) => setGuestCity(e.target.value)}
+                        className="mt-1.5 w-full rounded-xl border border-ocean/15 bg-sand/40 px-4 py-3 text-sm focus:outline-none focus:border-forest"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-ocean/60">
+                        Patente del vehículo (si corresponde)
+                      </span>
+                      <input
+                        type="text"
+                        placeholder="Ej. KLRT-42"
+                        value={vehiclePlate}
+                        onChange={(e) => setVehiclePlate(e.target.value)}
+                        className="mt-1.5 w-full rounded-xl border border-ocean/15 bg-sand/40 px-4 py-3 text-sm uppercase focus:outline-none focus:border-forest"
+                      />
+                    </label>
+
+                    {hasAnyChildren && (
+                      <label className="block sm:col-span-2">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-ocean/60">
+                          Edades de los niños *
+                        </span>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ej. 4 años y 8 años"
+                          value={childrenAges}
+                          onChange={(e) => setChildrenAges(e.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-ocean/15 bg-sand/40 px-4 py-3 text-sm focus:outline-none focus:border-forest"
+                        />
+                      </label>
+                    )}
+
+                    <label className="block sm:col-span-2">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-ocean/60">
+                        Identificación de huéspedes acompañantes (Nombres y RUT/Pasaporte)
+                      </span>
+                      <textarea
+                        rows={2}
+                        placeholder="Ej. Matías Fuentes (18.210.441-K) · Solo ingresan personas registradas"
+                        value={companionNames}
+                        onChange={(e) => setCompanionNames(e.target.value)}
+                        className="mt-1.5 w-full rounded-xl border border-ocean/15 bg-sand/40 px-4 py-3 text-sm focus:outline-none focus:border-forest"
+                      />
+                    </label>
+
+                    <label className="block sm:col-span-2">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-ocean/60">
+                        Hora estimada de llegada / Comentarios
+                      </span>
+                      <input
+                        type="text"
+                        placeholder="Ej. Llegamos cerca de las 16:00 hrs"
                         value={specialRequests}
                         onChange={(e) => setSpecialRequests(e.target.value)}
                         className="mt-1.5 w-full rounded-xl border border-ocean/15 bg-sand/40 px-4 py-3 text-sm focus:outline-none focus:border-forest"
                       />
                     </label>
                   </div>
+                </div>
+
+                {/* Mandatory Unchecked Policy Checkboxes */}
+                <div className="rounded-3xl glass-card p-6 sm:p-7 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="font-serif text-2xl font-semibold text-ocean flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-sunset" /> Aceptación Obligatoria de
+                      Condiciones
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowPoliciesModal(true)}
+                      className="text-xs font-semibold text-sunset hover:underline cursor-pointer"
+                    >
+                      Leer políticas completas
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl bg-red-50/70 border border-red-200/80 p-3.5 text-xs text-red-950 flex items-start gap-2.5">
+                    <Ban className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Importante:</strong> Mirador de Nogueche{" "}
+                      <strong>no admite mascotas</strong> en ninguno de sus alojamientos
+                      (exceptuando perros de asistencia debidamente identificados).
+                    </span>
+                  </div>
+
+                  <label className="flex items-start gap-3 p-3.5 rounded-2xl bg-sand/60 border border-ocean/10 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={acceptedCancellation}
+                      onChange={(e) => setAcceptedCancellation(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 accent-forest shrink-0"
+                    />
+                    <span className="text-xs sm:text-sm text-ocean">
+                      {OFFICIAL_POLICIES.mandatoryCheckboxes.cancellation}
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-3.5 rounded-2xl bg-sand/60 border border-ocean/10 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={acceptedHouseRules}
+                      onChange={(e) => setAcceptedHouseRules(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 accent-forest shrink-0"
+                    />
+                    <span className="text-xs sm:text-sm text-ocean">
+                      {OFFICIAL_POLICIES.mandatoryCheckboxes.houseRules}
+                    </span>
+                  </label>
+
+                  <p className="text-[11px] text-ocean/55">
+                    El sistema registrará fecha, hora y versión de las condiciones aceptadas (
+                    <code>{OFFICIAL_POLICIES.version}</code>).
+                  </p>
                 </div>
 
                 {formError && (
@@ -572,9 +877,10 @@ export function BookingWizard() {
                   </button>
                   <button
                     type="submit"
-                    className="px-7 py-3.5 rounded-full bg-sunset text-sand font-semibold text-sm flex items-center gap-2 shadow-lg hover:bg-forest transition-all cursor-pointer"
+                    disabled={quote?.exceedsCapacity}
+                    className="px-7 py-3.5 rounded-full bg-sunset text-sand font-semibold text-sm flex items-center gap-2 shadow-lg hover:bg-forest disabled:opacity-40 transition-all cursor-pointer"
                   >
-                    Bloquear Fechas por 30 Min y Pagar 50%
+                    Bloquear Fechas por {settings.holdDurationMinutes} Min y Pagar 50%
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -582,7 +888,7 @@ export function BookingWizard() {
             )}
 
             {/* =============================================
-                STEP 3: HOLD 30 MIN + PAGO ABONO 50%
+                STEP 3: HOLD 15 MIN + PAGO ABONO 50%
                ============================================= */}
             {step === 3 && activeReservation && (
               <motion.div
@@ -613,16 +919,17 @@ export function BookingWizard() {
                     </div>
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] font-semibold opacity-80">
-                        Bloqueo Temporal en Servidor · Código {activeReservation.code}
+                        Bloqueo Temporal ({settings.holdDurationMinutes} min) ·{" "}
+                        {activeReservation.accommodationName} · {activeReservation.code}
                       </p>
                       <h3 className="font-serif text-2xl font-medium mt-0.5">
                         {isWarning5m
                           ? "¡Recordatorio! Faltan menos de 5 minutos para vencer tu bloqueo"
-                          : "Tus fechas están reservadas temporalmente para ti"}
+                          : "Tus fechas están bloqueadas temporalmente mientras pagas"}
                       </h3>
                       <p className="text-xs opacity-80 mt-1">
-                        Nadie más puede tomar estas noches mientras completas el abono del 50%.
-                        El vencimiento se controla desde el servidor de Yggdra.
+                        Si el pago no se concreta dentro de {settings.holdDurationMinutes}{" "}
+                        minutos, las fechas se liberarán automáticamente.
                       </p>
                     </div>
                   </div>
@@ -648,16 +955,21 @@ export function BookingWizard() {
                 </div>
 
                 {/* Payment Method Selector */}
-                <div className="rounded-3xl bg-white border border-ocean/10 p-6 sm:p-7 shadow-sm space-y-6">
+                <div className="rounded-3xl glass-card p-6 sm:p-7 space-y-6">
                   <div>
                     <span className="text-xs uppercase tracking-[0.2em] text-sunset font-semibold">
-                      Abono inicial 50%
+                      Abono inicial 50% para confirmar
                     </span>
                     <h2 className="font-serif text-3xl font-semibold text-ocean mt-1">
                       Monto a pagar ahora: {formatCLP(activeReservation.depositAmount)}
                     </h2>
                     <p className="text-xs text-ocean/65 mt-1">
-                      El 50% restante ({formatCLP(activeReservation.totalAmount - activeReservation.depositAmount)}) se paga antes de recibir las indicaciones de acceso y llaves.
+                      El saldo pendiente del 50% (
+                      {formatCLP(
+                        activeReservation.totalAmount - activeReservation.depositAmount
+                      )}
+                      ) deberá estar pagado antes del ingreso para entregar el código de la
+                      caja de seguridad con las llaves.
                     </p>
                   </div>
 
@@ -678,7 +990,7 @@ export function BookingWizard() {
                       {
                         id: "BANK_TRANSFER" as PaymentMethod,
                         title: "Transferencia Bancaria",
-                        sub: "Validación por anfitriona",
+                        sub: "Adjuntar comprobante",
                         icon: Building2,
                       },
                     ].map((m) => (
@@ -707,28 +1019,16 @@ export function BookingWizard() {
                         <ShieldCheck className="w-5 h-5 text-forest shrink-0 mt-0.5" />
                         <div className="text-sm text-ocean/80">
                           <p className="font-semibold text-ocean">
-                            Enlace de pago seguro Flow.cl por{" "}
+                            Pago seguro Flow.cl por{" "}
                             {formatCLP(activeReservation.depositAmount)}
                           </p>
                           <p className="text-xs mt-1">
-                            Al concretarse el pago dentro del plazo, la reserva se confirma
-                            automáticamente y recibirás el resumen completo por mensaje.
+                            Al verificarse el pago dentro del plazo de{" "}
+                            {settings.holdDurationMinutes} minutos, tu reserva se confirma
+                            automáticamente.
                           </p>
                         </div>
                       </div>
-
-                      <label className="flex items-center gap-2.5 text-xs text-ocean/75 bg-white/80 p-3 rounded-xl border border-ocean/10 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={simulateDelayedWebhook}
-                          onChange={(e) => setSimulateDelayedWebhook(e.target.checked)}
-                          className="accent-forest"
-                        />
-                        <span>
-                          <strong>Demo técnica:</strong> simular confirmación demorada / webhook
-                          tardío (protege el bloqueo mientras Flow responde).
-                        </span>
-                      </label>
 
                       <button
                         type="button"
@@ -832,13 +1132,15 @@ export function BookingWizard() {
                             if (f) setTransferFileName(f.name);
                           }}
                         />
-                        <span className="text-xs font-semibold text-forest">Cambiar archivo</span>
+                        <span className="text-xs font-semibold text-forest">
+                          Adjuntar archivo
+                        </span>
                       </label>
 
                       <p className="text-xs text-ocean/70 flex items-start gap-2">
                         <CheckCircle2 className="w-4 h-4 text-forest shrink-0 mt-0.5" />
-                        Al enviar tu comprobante, las fechas quedan protegidas contra expiración
-                        hasta que la anfitriona valide el abono en el Panel Admin.
+                        Al adjuntar tu comprobante, la reserva queda pendiente de validación por
+                        administración evitando duplicidad de fechas.
                       </p>
 
                       {formError && (
@@ -862,15 +1164,17 @@ export function BookingWizard() {
 
         {/* Right Sticky Summary Card */}
         <aside className="lg:col-span-4 lg:sticky lg:top-24">
-          <div className="rounded-3xl bg-white border border-ocean/10 p-6 shadow-[0_20px_50px_rgba(20,29,36,0.08)] space-y-5">
+          <ScrollReveal y={24} delay={0.1}>
+          <div className="rounded-3xl glass-card p-6 space-y-5">
             <div className="flex items-center justify-between pb-4 border-b border-ocean/10">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.2em] text-sunset font-semibold">
-                  Resumen de Estadía
+                  Resumen Previo al Pago
                 </p>
                 <h3 className="font-serif text-2xl font-semibold text-ocean">
-                  Mirador de Nogueche
+                  {profile.name}
                 </h3>
+                <p className="text-xs text-ocean/60">{profile.capacityLabel}</p>
               </div>
               <Calendar className="w-5 h-5 text-forest" />
             </div>
@@ -880,22 +1184,32 @@ export function BookingWizard() {
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="rounded-2xl bg-sand/70 p-3">
                     <span className="text-ocean/55 block uppercase tracking-wider text-[10px]">
-                      Check-in
+                      Ingreso
                     </span>
                     <span className="font-semibold text-ocean text-sm mt-0.5 block">
                       {formatDateES(checkIn)}
                     </span>
-                    <span className="text-ocean/55">Desde 14:00</span>
+                    <span className="text-ocean/55">Desde 15:00 hrs</span>
                   </div>
                   <div className="rounded-2xl bg-sand/70 p-3">
                     <span className="text-ocean/55 block uppercase tracking-wider text-[10px]">
-                      Check-out
+                      Salida
                     </span>
                     <span className="font-semibold text-ocean text-sm mt-0.5 block">
                       {formatDateES(checkOut)}
                     </span>
-                    <span className="text-ocean/55">Hasta 13:00</span>
+                    <span className="text-ocean/55">Hasta 12:00 hrs</span>
                   </div>
+                </div>
+
+                <div className="rounded-2xl bg-sand/50 px-3.5 py-2.5 text-xs text-ocean/80 flex items-center justify-between">
+                  <span>Huéspedes</span>
+                  <span className="font-semibold text-ocean">
+                    {adults} ad.
+                    {children7Plus > 0 ? ` · ${children7Plus} (7+)` : ""}
+                    {children2To6 > 0 ? ` · ${children2To6} (2–6)` : ""}
+                    {childrenUnder2 > 0 ? ` · ${childrenUnder2} (<2)` : ""}
+                  </span>
                 </div>
 
                 {!quote.meetsMinNights && (
@@ -908,15 +1222,18 @@ export function BookingWizard() {
                 <div className="space-y-2.5 text-sm pt-2 border-t border-ocean/10">
                   <div className="flex justify-between text-ocean/80">
                     <span>
-                      Alojamiento ({quote.nights}{" "}
-                      {quote.nights === 1 ? "noche" : "noches"})
+                      {formatCLP(quote.nightlyRatePerNight)} × {quote.nights}{" "}
+                      {quote.nights === 1 ? "noche" : "noches"}
                     </span>
                     <span className="font-medium">{formatCLP(quote.nightlySubtotal)}</span>
                   </div>
-                  {quote.childFeeTotal > 0 && (
+                  {quote.child2To6FeeTotal > 0 && (
                     <div className="flex justify-between text-ocean/80">
-                      <span>Niño adicional (&gt; 2 años)</span>
-                      <span className="font-medium">{formatCLP(quote.childFeeTotal)}</span>
+                      <span>
+                        Niños 2–6 años ({children2To6} × {formatCLP(settings.child2To6NightlyFee)}{" "}
+                        × {quote.nights}n)
+                      </span>
+                      <span className="font-medium">{formatCLP(quote.child2To6FeeTotal)}</span>
                     </div>
                   )}
                   {quote.breakfastTotal > 0 && (
@@ -926,43 +1243,169 @@ export function BookingWizard() {
                     </div>
                   )}
                   <div className="flex justify-between pt-3 border-t border-ocean/10 text-base font-bold text-ocean">
-                    <span>Total estadía</span>
+                    <span>Valor total estadía</span>
                     <span>{formatCLP(quote.totalAmount)}</span>
                   </div>
                 </div>
 
                 <div className="rounded-2xl bg-forest/8 border border-forest/15 p-4 space-y-1.5 text-xs">
                   <div className="flex justify-between font-bold text-forest text-sm">
-                    <span>Abono hoy (50%)</span>
+                    <span>Abono requerido (50%)</span>
                     <span>{formatCLP(quote.depositAmount)}</span>
                   </div>
                   <div className="flex justify-between text-ocean/70">
-                    <span>Saldo antes de llegada (50%)</span>
+                    <span>Saldo pendiente (50%)</span>
                     <span>{formatCLP(quote.balanceAmount)}</span>
                   </div>
                 </div>
               </>
             ) : (
               <div className="py-8 text-center text-sm text-ocean/60">
-                Selecciona tu fecha de llegada y salida en el calendario para ver el
-                desglose en tiempo real.
+                Selecciona tu fecha de ingreso y salida en el calendario de{" "}
+                <strong>{profile.name}</strong> para calcular tu estadía en tiempo real.
               </div>
             )}
 
             <div className="text-[11px] text-ocean/55 pt-2 border-t border-ocean/10 space-y-1">
               <p className="flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-forest" />
-                Bloqueo atómico de 30 min controlado en servidor.
+                Plazo de bloqueo temporal: {settings.holdDurationMinutes} minutos.
               </p>
               <p className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-forest" />
-                Regla activa: mín. {settings.defaultMinNights} noches (configurable por
-                temporada).
+                <Ban className="w-3.5 h-3.5 text-sunset" />
+                No se admiten mascotas (salvo perros de asistencia).
               </p>
             </div>
           </div>
+          </ScrollReveal>
         </aside>
       </div>
+
+      {/* Mobile Sticky Bottom Live Quote Bar (Steps 1 & 2) */}
+      {step !== 3 && quote && checkIn && checkOut && (
+        <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden px-3 pb-3 pt-2 pointer-events-none">
+          <div className="pointer-events-auto rounded-2xl glass-dark shadow-[0_-10px_40px_rgba(0,0,0,0.35)] px-4 py-3 flex items-center justify-between gap-3 text-sand">
+            <div className="leading-tight">
+              <span className="text-[10px] uppercase tracking-wider text-cream/80 block">
+                {quote.nights} {quote.nights === 1 ? "noche" : "noches"} · Abono 50%:{" "}
+                <strong className="text-cream">{formatCLP(quote.depositAmount)}</strong>
+              </span>
+              <span className="font-serif text-xl font-semibold text-sand">
+                Total {formatCLP(quote.totalAmount)}
+              </span>
+            </div>
+            {step === 1 && (
+              <button
+                type="button"
+                onClick={handleContinueStep2}
+                disabled={!quote.meetsMinNights}
+                className="h-11 px-5 rounded-xl bg-sunset text-sand font-semibold text-xs flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shrink-0"
+              >
+                Continuar <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Full Policies Modal */}
+      <AnimatePresence>
+        {showPoliciesModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowPoliciesModal(false)}
+            className="fixed inset-0 z-50 bg-abyss/75 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="max-w-2xl w-full rounded-3xl bg-white p-6 sm:p-8 shadow-2xl max-h-[85vh] overflow-y-auto space-y-5"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-[11px] uppercase tracking-widest text-sunset font-bold">
+                    Versión {OFFICIAL_POLICIES.version}
+                  </span>
+                  <h3 className="font-serif text-3xl font-semibold text-ocean">
+                    Condiciones Generales y Políticas
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPoliciesModal(false)}
+                  className="p-2 rounded-full hover:bg-ocean/10 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs sm:text-sm text-ocean/80">
+                <div>
+                  <h4 className="font-semibold text-ocean mb-1.5">
+                    Política de Cancelación
+                  </h4>
+                  <div className="rounded-2xl bg-sand/70 p-3.5 space-y-1.5">
+                    {OFFICIAL_POLICIES.cancellationTable.map((r) => (
+                      <div key={r.window} className="flex justify-between">
+                        <span>{r.window}</span>
+                        <strong>{r.refund}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-ocean mb-1.5">
+                    Modificación de Reservas
+                  </h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {OFFICIAL_POLICIES.modificationRules.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-ocean mb-1.5">
+                    Política de Mascotas
+                  </h4>
+                  <p>
+                    {OFFICIAL_POLICIES.noPetsPolicy.summary}{" "}
+                    <strong>{OFFICIAL_POLICIES.noPetsPolicy.exception}</strong>
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-ocean mb-1.5">
+                    Normas de Convivencia y Uso de Espacios
+                  </h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {HOUSE_RULES.map((rule) => (
+                      <li key={rule.code}>
+                        <strong>{rule.title}:</strong> {rule.detail}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowPoliciesModal(false)}
+                  className="px-6 py-2.5 rounded-full bg-forest text-sand text-sm font-semibold cursor-pointer"
+                >
+                  Entendido
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

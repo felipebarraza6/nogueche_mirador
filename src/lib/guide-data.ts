@@ -1,26 +1,42 @@
+import type { AccommodationId } from "./api/types";
+import {
+  ACCOMMODATION_VIDEOS,
+  BOUTIQUE_GALLERY,
+  CASA_MIRADOR_GALLERY,
+  type MediaAsset,
+} from "./media";
+
 /**
- * Contenido real extraído de "Guía digital Cabaña Mirador de Nogueche 2026".
- * Utilizado tanto en la landing pública (resumen) como en el Portal del Huésped (guía completa).
+ * Contenido oficial definitivo de Mirador de Nogueche (Noviembre 2026):
+ * - Tarifario temporada alta 2026–2027 (01 dic 2026 al 28 feb 2027 inclusive)
+ * - Condiciones generales, políticas de cancelación, niños y convivencia
+ * - Guía digital de entorno en Cobquecura, Región de Ñuble
  */
 
+export const POLICIES_VERSION = "nov-2026-v1";
+
 export const PROPERTY_INFO = {
-  name: "Cabaña Mirador de Nogueche",
+  name: "Mirador de Nogueche",
   shortName: "Mirador de Nogueche",
-  subtitle: "Cabaña / Cobquecura",
+  subtitle: "Alojamientos junto al mar · Cobquecura",
+  tagline: "Naturaleza, tranquilidad y descanso junto al mar.",
   hostName: "Erica Astudillo",
   whatsappDisplay: "+56 9 2647 0070",
-  whatsappHref: "https://wa.me/56926470070?text=Hola%20Erica%2C%20te%20escribo%20desde%20Mirador%20de%20Nogueche",
-  address: "Pasaje El Roble Lote 16, sector Nogueche, Comuna Cobquecura, Región de Ñuble, Chile",
+  whatsappHref:
+    "https://wa.me/56926470070?text=Hola%20Erica%2C%20te%20escribo%20desde%20Mirador%20de%20Nogueche",
+  address:
+    "Sector Nogueche, comuna de Cobquecura, Región de Ñuble, Chile",
   mapsHref:
-    "https://www.google.com/maps/search/?api=1&query=Pasaje+El+Roble+Lote+16+Nogueche+Cobquecura+Chile",
+    "https://www.google.com/maps/search/?api=1&query=-36.2216951,-72.8122664",
   regionSummary:
-    "Al sur del centro de Cobquecura, sector Nogueche, sobre la Ruta del Mar, a pocos minutos de Caleta Rinconada.",
-  checkInTime: "14:00 hrs",
-  checkOutTime: "13:00 hrs",
-  lateCheckOutNote:
-    "Es posible extender tu salida hasta las 14:00 hrs sin costo, según disponibilidad de agenda.",
-  capacitySummary:
-    "Ideal para 1 persona o una pareja. Se puede agregar 1 niño pequeño durmiendo en la misma cama king (valor extra por noche sobre los 2 años).",
+    "Sector Nogueche, comuna de Cobquecura, Región de Ñuble. A 5 minutos caminando de la playa y a 15 minutos en vehículo del centro de Cobquecura.",
+  beachDistance: "5 minutos caminando de la playa",
+  townDistance: "15 minutos en vehículo del centro de Cobquecura",
+  checkInTime: "15:00 hrs",
+  checkOutTime: "12:00 hrs",
+  quietHours: "23:00 a 08:00 hrs",
+  scheduleNote:
+    "Cualquier modificación de estos horarios deberá ser consultada previamente con la administración y estará sujeta a disponibilidad.",
   wifi: {
     network: "Jupiter1",
     password: "ANTENA",
@@ -31,6 +47,158 @@ export const PROPERTY_INFO = {
       "https://www.instagram.com/miradordenogueche?utm_source=qr&igsh=MWhkM3hkb25mZmY5aQ==",
     instagramHandle: "@miradordenogueche",
     facebook: "https://www.facebook.com/profile.php?id=61587071120684",
+  },
+};
+
+export interface AccommodationTier {
+  guestsLabel: string;
+  minGuests: number;
+  maxGuests: number;
+  nightlyRate: number;
+}
+
+export interface AccommodationProfile {
+  id: AccommodationId;
+  name: string;
+  badge: string;
+  capacityLabel: string;
+  maxRegularGuests: number;
+  maxTotalWithSharedChild: number;
+  startingRate: number;
+  summary: string;
+  idealFor: string;
+  highlights: string[];
+  tiers: AccommodationTier[];
+  cover: MediaAsset;
+  gallery: MediaAsset[];
+  video: {
+    src: string;
+    poster: string;
+    title: string;
+  };
+}
+
+export const ACCOMMODATIONS: Record<AccommodationId, AccommodationProfile> = {
+  "cabana-boutique": {
+    id: "cabana-boutique",
+    name: "Cabaña Boutique",
+    badge: "Refugio para 1 a 2 personas",
+    capacityLabel: "1 a 2 personas",
+    maxRegularGuests: 2,
+    maxTotalWithSharedChild: 3, // hasta 2 adultos + 1 niño (2-6 o <2) compartiendo cama existente
+    startingRate: 60000,
+    summary:
+      "Refugio íntimo en madera natural con terraza privada, cocina equipada, estación de café con prensa francesa y vistas al atardecer costero.",
+    idealFor: "Escapadas en pareja o descanso individual frente al mar.",
+    highlights: [
+      "1 a 2 personas · Cama matrimonial en madera",
+      "Terraza privada con vista despejada",
+      "Cocina equipada + prensa francesa",
+      "A 5 minutos caminando de la playa",
+      "Ingreso autónomo con caja de seguridad",
+    ],
+    tiers: [
+      {
+        guestsLabel: "1 a 2 personas",
+        minGuests: 1,
+        maxGuests: 2,
+        nightlyRate: 60000,
+      },
+    ],
+    cover: BOUTIQUE_GALLERY[0],
+    gallery: BOUTIQUE_GALLERY,
+    video: ACCOMMODATION_VIDEOS["cabana-boutique"],
+  },
+  "casa-mirador": {
+    id: "casa-mirador",
+    name: "Casa Mirador",
+    badge: "Alojamiento familiar 1 a 6 personas",
+    capacityLabel: "1 a 6 personas",
+    maxRegularGuests: 6,
+    maxTotalWithSharedChild: 6,
+    startingRate: 65000,
+    summary:
+      "Amplia casa costera con ventanales panorámicos, cocina con isla central, múltiples dormitorios, zona de fogón exterior y vista abierta al paisaje de Nogueche.",
+    idealFor: "Familias, parejas que buscan amplitud o grupos tranquilos de hasta 6 personas.",
+    highlights: [
+      "1 a 6 personas · Tarifa escalonada por capacidad",
+      "Living comedor panorámico con vigas a la vista",
+      "Cocina completa con isla central",
+      "Dormitorio principal + dormitorio con camarote + espacio adicional",
+      "Zona de fogón exterior habilitada y vista al mar",
+    ],
+    tiers: [
+      { guestsLabel: "1 a 2 personas", minGuests: 1, maxGuests: 2, nightlyRate: 65000 },
+      { guestsLabel: "3 a 4 personas", minGuests: 3, maxGuests: 4, nightlyRate: 75000 },
+      { guestsLabel: "5 personas", minGuests: 5, maxGuests: 5, nightlyRate: 85000 },
+      { guestsLabel: "6 personas", minGuests: 6, maxGuests: 6, nightlyRate: 95000 },
+    ],
+    cover: CASA_MIRADOR_GALLERY[0],
+    gallery: CASA_MIRADOR_GALLERY,
+    video: ACCOMMODATION_VIDEOS["casa-mirador"],
+  },
+};
+
+export const ACCOMMODATION_LIST: AccommodationProfile[] = [
+  ACCOMMODATIONS["cabana-boutique"],
+  ACCOMMODATIONS["casa-mirador"],
+];
+
+export const OFFICIAL_POLICIES = {
+  version: POLICIES_VERSION,
+  highSeasonLabel: "01 de diciembre de 2026 al 28 de febrero de 2027 (inclusive)",
+  minStaySummary: [
+    "Estadía mínima de 2 noches durante toda la temporada alta (01 dic 2026 – 28 feb 2027).",
+    "Estadía mínima de 2 noches los fines de semana durante el resto del año.",
+    "Valores expresados en pesos chilenos (CLP), por alojamiento y por noche (no por persona).",
+  ],
+  childrenPolicy: [
+    "Menores de 2 años: sin costo adicional.",
+    "Desde los 2 hasta los 6 años inclusive: $5.000 adicionales por niño y por noche, cuando compartan una cama existente.",
+    "Desde los 7 años: tarifa regular según cantidad de huéspedes.",
+    "No disponemos de cunas.",
+  ],
+  cancellationTable: [
+    {
+      window: "15 días o más antes del ingreso",
+      refund: "100% del abono",
+    },
+    {
+      window: "Entre 7 y 14 días antes del ingreso",
+      refund: "50% del abono",
+    },
+    {
+      window: "Menos de 7 días antes del ingreso",
+      refund: "Sin devolución",
+    },
+    {
+      window: "No presentación del huésped",
+      refund: "Sin devolución",
+    },
+  ],
+  cancellationNotes: [
+    "Las solicitudes de cancelación deberán realizarse por escrito a través de los canales oficiales de contacto.",
+    "En caso de retiro anticipado por decisión del huésped, no se realizará devolución por las noches no utilizadas.",
+    "Si la cancelación es responsabilidad de Mirador de Nogueche, se devolverá la totalidad de los montos pagados.",
+  ],
+  modificationRules: [
+    "Se permitirá una modificación de fechas por reserva.",
+    "La solicitud deberá realizarse con al menos 7 días de anticipación a la fecha de ingreso.",
+    "La modificación estará sujeta a disponibilidad.",
+    "En caso de existir diferencias tarifarias, estas deberán ser regularizadas antes del ingreso.",
+  ],
+  noPetsPolicy: {
+    title: "Política de no admisión de mascotas",
+    summary:
+      "Con el propósito de resguardar la higiene, el cuidado de nuestras instalaciones y garantizar una experiencia de descanso y tranquilidad para todos nuestros huéspedes, Mirador de Nogueche no admite mascotas en ninguno de sus alojamientos.",
+    exception:
+      "Se exceptúan los perros de asistencia debidamente identificados, conforme a la normativa vigente.",
+  },
+  mandatoryCheckboxes: {
+    cancellation:
+      "He leído y acepto las políticas de cancelación y modificación de reservas.",
+    houseRules:
+      "He leído y acepto las condiciones generales y normas de convivencia de Mirador de Nogueche, incluida la política de no admisión de mascotas.",
   },
 };
 
@@ -72,68 +240,42 @@ export const BREAKFAST_OPTIONS: BreakfastOption[] = [
 
 export const HOUSE_RULES = [
   {
-    code: "00",
-    title: "No fumar dentro de la cabaña",
-    detail:
-      "Si fumas, hazlo en la terraza (hay cenicero disponible) o en la zona del fogón.",
-  },
-  {
     code: "01",
-    title: "Recolección selectiva",
+    title: "Horario de silencio (23:00 a 08:00 hrs)",
     detail:
-      "Zona de basura y reciclables a un costado de la bodega frente a la cabaña: residuos comunes, cartón, papel, latas y vidrios.",
+      "Respetar el descanso de todos los huéspedes. No se permiten fiestas, celebraciones, eventos ni música a volumen alto.",
   },
   {
     code: "02",
-    title: "Cuidado con las llaves",
+    title: "Solo huéspedes registrados · Sin visitas externas",
     detail:
-      "Antes de salir verifica que no quede ninguna llave puesta en la cerradura interior. Al check-out déjalas puestas en la cerradura.",
+      "No se permite recibir visitas externas ni superar la capacidad máxima del alojamiento. Solo permanecen las personas registradas en la reserva.",
   },
   {
     code: "03",
-    title: "Uso consciente de luces",
+    title: "No se admiten mascotas",
     detail:
-      "Apaga luces interiores, del jardín y de la terraza durante el día y al retirarte.",
+      "No se admiten mascotas en Cabaña Boutique ni en Casa Mirador, exceptuando perros de asistencia debidamente identificados.",
   },
   {
     code: "04",
-    title: "Puertas y ventanas",
+    title: "Prohibido fumar en interiores",
     detail:
-      "Asegúrate siempre de cerrar puertas, ventanas y calefacción antes de salir.",
+      "Está estrictamente prohibido fumar dentro de los alojamientos. Solo en espacios exteriores, disponiendo adecuadamente las colillas.",
   },
   {
     code: "05",
-    title: "Limpieza del espacio",
+    title: "Uso de cocina (sin frituras en interior)",
     detail:
-      "Mantén la cabaña y la cocina limpias durante tu estadía. Se podrán cobrar limpiezas adicionales si corresponde.",
+      "No se permite realizar frituras dentro de los alojamientos para evitar olores persistentes. Para frituras utiliza implementos adecuados en el exterior.",
   },
   {
     code: "06",
-    title: "Timbre negro en la cocina",
+    title: "Parrillas, fogones y cuidado de instalaciones",
     detail:
-      "Al retirarte de tu estadía toca 1 vez el timbre negro en la cocina e iremos a despedirte. También úsalo si no respondemos por WhatsApp.",
+      "Usar parrillas y fogones solo en espacios habilitados, sin dejar fuego sin supervisión. El titular responde por daños, pérdidas o limpieza extraordinaria.",
   },
 ];
-
-export const PET_FRIENDLY_RULES = {
-  conditions: [
-    "No pueden subir a camas ni sillones.",
-    "Deben circular siempre con correa dentro del entorno de la cabaña.",
-    "No pueden quedar solas en la cabaña si los huéspedes salen.",
-    "Los dueños deben recoger y disponer adecuadamente sus desechos.",
-  ],
-  restrictedBreeds: [
-    "Bullmastiff",
-    "Doberman",
-    "Dogo Argentino",
-    "Fila Brasileiro",
-    "Pitbull",
-    "Presa Canario",
-    "Presa Mallorquín",
-    "Rottweiler",
-    "Tosa Inu",
-  ],
-};
 
 export const FRENCH_PRESS_STEPS = [
   {
@@ -171,32 +313,37 @@ export const OTHER_AMENITIES = [
   "Radio Bluetooth disponible: conéctate seleccionando el dispositivo VT500.",
   "Enchufe y pastillas para zancudos disponibles bajo el lavaplatos.",
   "Secador de pelo en el mueble de baño, champú, acondicionador, jabón, toallas de cuerpo y manos.",
+  "Recolección selectiva habilitada: residuos comunes, cartón, papel, latas y vidrios.",
 ];
 
 export const FAQ_ITEMS = [
   {
-    q: "¿A qué hora es el check-in y el check-out?",
-    a: "Check-in desde las 14:00 hrs y check-out hasta las 13:00 hrs. Se puede extender la salida hasta las 14:00 hrs sin costo según disponibilidad. Infórmanos tu hora de llegada con anticipación.",
+    q: "¿Qué alojamientos tienen y cuáles son las tarifas 2026–2027?",
+    a: "Contamos con dos alojamientos con calendarios independientes: Cabaña Boutique (1 a 2 personas, $60.000/noche) y Casa Mirador (1 a 2 personas $65.000, 3 a 4 personas $75.000, 5 personas $85.000 y 6 personas $95.000 por noche). Los valores son en CLP por alojamiento y por noche.",
   },
   {
-    q: "¿Para cuántas personas es la cabaña?",
-    a: "Es ideal para 1 persona o una pareja. Puede sumarse un niño pequeño durmiendo en la misma cama king (valor extra por noche sobre los 2 años).",
+    q: "¿Cuáles son los horarios de check-in, check-out y silencio?",
+    a: "Check-in desde las 15:00 horas y check-out hasta las 12:00 horas. El horario de silencio rige entre las 23:00 y las 08:00 horas. Cualquier ajuste de horario debe consultarse previamente y está sujeto a disponibilidad.",
   },
   {
-    q: "¿Cómo funciona la reserva y el pago?",
-    a: "Seleccionas tus fechas (estadía mínima de 2 noches en tarifa general) y bloqueamos tu estadía por 30 minutos mientras realizas el abono del 50% vía tarjeta de débito, crédito o transferencia bancaria. El 50% restante se paga antes de la llegada para liberar las indicaciones de acceso y llaves.",
+    q: "¿Cómo funciona la reserva, el bloqueo de 15 minutos y el ingreso autónomo?",
+    a: "Al seleccionar fechas y completar el registro de huéspedes, bloqueamos temporalmente tus fechas durante 15 minutos mientras realizas el abono del 50% (débito, crédito o transferencia bancaria con comprobante). El 50% restante se paga antes del ingreso y, al confirmarse el 100%, se libera automáticamente el código de la caja de seguridad que contiene las llaves.",
   },
   {
-    q: "¿Aceptan mascotas?",
-    a: "Sí, somos Pet Friendly bajo normas de convivencia (correa en el entorno, sin subir a camas/sillones y sin quedar solas en la cabaña). Existen restricciones para ciertas razas de manejo especial.",
+    q: "¿Cuál es la política tarifaria para niños?",
+    a: "Menores de 2 años ingresan sin costo adicional. Niños de 2 a 6 años inclusive pagan $5.000 adicionales por niño y por noche cuando compartan una cama existente. Desde los 7 años aplica tarifa regular según cantidad de huéspedes. No disponemos de cunas.",
   },
   {
-    q: "¿Tienen secador de pelo, toallas y artículos de baño?",
-    a: "Sí. Encontrarás secador de pelo en el mueble de baño, champú, acondicionador, jabón, además de toallas de cuerpo y de manos.",
+    q: "¿Admiten mascotas?",
+    a: "No. Con el fin de resguardar la higiene, el cuidado de las instalaciones y el descanso de todos los huéspedes, Mirador de Nogueche no admite mascotas en ninguno de sus alojamientos. Se exceptúan únicamente perros de asistencia debidamente identificados conforme a la normativa vigente.",
+  },
+  {
+    q: "¿Cuál es la política de cancelación y modificación de fechas?",
+    a: "Con 15 días o más de anticipación se devuelve el 100% del abono; entre 7 y 14 días, el 50%; con menos de 7 días o no presentación no hay devolución. Además, se permite 1 modificación de fechas por reserva solicitándola con al menos 7 días de anticipación (sujeta a disponibilidad y diferencia tarifaria).",
   },
   {
     q: "¿Dónde están ubicados exactamente?",
-    a: "Al sur del centro de Cobquecura, sector Nogueche, sobre la Ruta del Mar, a minutos de Caleta Rinconada. La dirección exacta y el enlace directo a Google Maps se desbloquean automáticamente al completar el 100% del pago.",
+    a: "Estamos en el sector Nogueche, comuna de Cobquecura, Región de Ñuble, a 5 minutos caminando de la playa y a 15 minutos en vehículo del centro de Cobquecura. El enlace exacto de Google Maps y el código de ingreso autónomo se entregan al completar el 100% del pago.",
   },
 ];
 
@@ -219,7 +366,7 @@ export const LOCAL_GUIDE_PLACES: LocalPlace[] = [
   {
     name: "Supermercado La Colérica",
     area: "Centro Cobquecura",
-    driveTime: "8 min en auto",
+    driveTime: "15 min en auto",
     description: "Abastecimiento general en el centro del pueblo.",
     category: "supermercados",
     mapsQuery: "Supermercado La Colerica Cobquecura",
@@ -243,7 +390,7 @@ export const LOCAL_GUIDE_PLACES: LocalPlace[] = [
   {
     name: "Minimarket El Futuro",
     area: "Centro Cobquecura",
-    driveTime: "8 min en auto",
+    driveTime: "15 min en auto",
     description: "Minimarket céntrico para compras rápidas.",
     category: "supermercados",
     mapsQuery: "Minimarket El Futuro Cobquecura",
@@ -270,7 +417,7 @@ export const LOCAL_GUIDE_PLACES: LocalPlace[] = [
     name: "Ruka Antu",
     area: "Rinconada de Taucu",
     driveTime: "8 min en auto",
-    description: "Cocina costera tradicional cerca de la cabaña.",
+    description: "Cocina costera tradicional cerca del alojamiento.",
     category: "donde-comer",
     mapsQuery: "Ruka Antu Rinconada de Taucu Cobquecura",
   },
@@ -286,14 +433,14 @@ export const LOCAL_GUIDE_PLACES: LocalPlace[] = [
     name: "HAND Rocker",
     area: "Cobquecura",
     driveTime: "15 min en auto",
-    description: "Sushi para llevar a la cabaña o comer en el local.",
+    description: "Sushi para llevar o comer en el local.",
     category: "donde-comer",
     mapsQuery: "HAND Rocker Cobquecura",
   },
   {
     name: "Sabores Cobquecura",
     area: "Centro Cobquecura",
-    driveTime: "8 min en auto",
+    driveTime: "15 min en auto",
     description: "Gastronomía local en el corazón de Cobquecura.",
     category: "donde-comer",
     mapsQuery: "Sabores Cobquecura",
@@ -301,7 +448,7 @@ export const LOCAL_GUIDE_PLACES: LocalPlace[] = [
   {
     name: "Café Mirador Cobquecura",
     area: "Pilicura",
-    driveTime: "8 min en auto",
+    driveTime: "10 min en auto",
     description: "Cafetería con vista privilegiada al litoral.",
     category: "donde-comer",
     mapsQuery: "Cafe Mirador Cobquecura",
@@ -309,7 +456,7 @@ export const LOCAL_GUIDE_PLACES: LocalPlace[] = [
   {
     name: "Restobar Arena Negra",
     area: "Cobquecura",
-    driveTime: "10 min en auto",
+    driveTime: "15 min en auto",
     description: "Restobar costero ideal para cena y tragos al atardecer.",
     category: "donde-comer",
     mapsQuery: "Restobar Arena Negra Cobquecura",
@@ -317,7 +464,7 @@ export const LOCAL_GUIDE_PLACES: LocalPlace[] = [
   {
     name: "Restaurant La Lobería",
     area: "Cobquecura",
-    driveTime: "10 min en auto",
+    driveTime: "15 min en auto",
     description: "Clásico de pescados y mariscos frente a la costa.",
     category: "donde-comer",
     mapsQuery: "Restaurant La Loberia Cobquecura",
@@ -325,21 +472,21 @@ export const LOCAL_GUIDE_PLACES: LocalPlace[] = [
   {
     name: "Vibras Point / Don Gualo / Entre Lobos",
     area: "Buchupureo",
-    driveTime: "8–15 min en auto",
+    driveTime: "20 min en auto",
     description: "Polo gastronómico surfista de Buchupureo con cocina de mar y empanadas.",
     category: "donde-comer",
     mapsQuery: "Buchupureo restaurantes Cobquecura",
   },
-  {
-    name: "Salón Verde / Due Capi / Costa Pucará / El Corralero",
-    area: "Buchupureo - Pullay",
-    driveTime: "15–20 min en auto",
-    description: "Ruta gastronómica entre Buchupureo y Pullay.",
-    category: "donde-comer",
-    mapsQuery: "Due Capi Buchupureo",
-  },
 
   // Lugares para visitar
+  {
+    name: "Playa Nogueche",
+    area: "Sector Nogueche",
+    driveTime: "5 min caminando",
+    description: "Playa tranquila y extensa a pocos pasos del alojamiento, ideal para caminar al atardecer.",
+    category: "lugares",
+    mapsQuery: "-36.2216951,-72.8122664",
+  },
   {
     name: "Feria Libre Santa Rita",
     area: "Sector Santa Rita",
@@ -365,17 +512,9 @@ export const LOCAL_GUIDE_PLACES: LocalPlace[] = [
     mapsQuery: "Arco de los Enamorados Cobquecura",
   },
   {
-    name: "Playas Nogueche, Mela y Montezorro",
-    area: "Costa Sur",
-    driveTime: "10 min al sur",
-    description: "Playas tranquilas y extensas ideales para caminar al atardecer.",
-    category: "lugares",
-    mapsQuery: "Playa Nogueche Cobquecura",
-  },
-  {
     name: "Iglesia de Piedra",
     area: "Norte de Cobquecura",
-    driveTime: "6 min al norte",
+    driveTime: "15 min en auto",
     description: "Monumento natural emblemático de acantilados y cavernas marinas.",
     category: "lugares",
     mapsQuery: "Iglesia de Piedra Cobquecura",
@@ -393,7 +532,7 @@ export const LOCAL_GUIDE_PLACES: LocalPlace[] = [
   {
     name: "Cerro El Calvario",
     area: "Centro Cobquecura",
-    driveTime: "12 min en auto",
+    driveTime: "15 min en auto",
     description: "Mirador panorámico sobre el pueblo y el océano.",
     category: "excursiones",
     mapsQuery: "Cerro El Calvario Cobquecura",
@@ -409,7 +548,7 @@ export const LOCAL_GUIDE_PLACES: LocalPlace[] = [
   {
     name: "Playa Mure & Buchupureo",
     area: "Norte",
-    driveTime: "15–20 min en auto",
+    driveTime: "20 min en auto",
     description: "Olas reconocidas para surf, cafeterías y atardeceres inolvidables.",
     category: "excursiones",
     mapsQuery: "Playa Buchupureo Cobquecura",

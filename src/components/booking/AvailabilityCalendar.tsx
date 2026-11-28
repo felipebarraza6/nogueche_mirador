@@ -4,9 +4,12 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Clock, Lock } from "lucide-react";
 import { useNoguecheStore } from "@/lib/api/demo-store";
+import type { AccommodationId } from "@/lib/api/types";
+import { ACCOMMODATIONS } from "@/lib/guide-data";
 import { cn, toISODate } from "@/lib/utils";
 
 interface AvailabilityCalendarProps {
+  accommodationId: AccommodationId;
   checkIn: string | null;
   checkOut: string | null;
   onSelectRange: (checkIn: string | null, checkOut: string | null) => void;
@@ -29,6 +32,7 @@ function getMonthDays(year: number, month: number): (string | null)[] {
 }
 
 export function AvailabilityCalendar({
+  accommodationId,
   checkIn,
   checkOut,
   onSelectRange,
@@ -42,6 +46,12 @@ export function AvailabilityCalendar({
 
   const getDayState = useNoguecheStore((s) => s.getDayState);
   const isRangeAvailable = useNoguecheStore((s) => s.isRangeAvailable);
+  const holdMinutes = useNoguecheStore((s) => s.settings.holdDurationMinutes);
+  // Subscribe to reservations & blocks so calendar re-renders immediately
+  useNoguecheStore((s) => s.reservations);
+  useNoguecheStore((s) => s.manualBlocks);
+
+  const accommodationName = ACCOMMODATIONS[accommodationId].name;
 
   const months = useMemo(() => {
     const list: { year: number; month: number; label: string; cells: (string | null)[] }[] = [];
@@ -69,17 +79,15 @@ export function AvailabilityCalendar({
 
   const handleDayClick = (iso: string) => {
     if (readOnly) return;
-    const state = getDayState(iso);
+    const state = getDayState(accommodationId, iso);
     if (state === "PAST") return;
 
-    // Si no hay checkIn o ya hay rango completo, iniciar nueva selección (debe ser disponible)
     if (!checkIn || (checkIn && checkOut)) {
       if (state !== "AVAILABLE") return;
       onSelectRange(iso, null);
       return;
     }
 
-    // Si hace clic en fecha anterior o igual al checkIn, reiniciar checkIn
     if (iso <= checkIn) {
       if (state === "AVAILABLE") {
         onSelectRange(iso, null);
@@ -87,8 +95,7 @@ export function AvailabilityCalendar({
       return;
     }
 
-    // Validar que todas las noches intermedias [checkIn, iso) estén disponibles
-    const check = isRangeAvailable(checkIn, iso);
+    const check = isRangeAvailable(accommodationId, checkIn, iso);
     if (!check.ok) {
       if (state === "AVAILABLE") {
         onSelectRange(iso, null);
@@ -100,19 +107,19 @@ export function AvailabilityCalendar({
   };
 
   return (
-    <div className="rounded-3xl bg-white/90 border border-ocean/10 p-5 sm:p-6 shadow-[0_20px_50px_rgba(20,29,36,0.06)]">
+    <div className="rounded-3xl glass-card p-5 sm:p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-sunset font-semibold">
-            Disponibilidad en tiempo real
+            Calendario independiente · {accommodationName}
           </p>
           <p className="text-sm text-ocean/70 mt-0.5">
             {readOnly
-              ? "Estado sincronizado de reservas, holds activos y bloqueos."
+              ? `Estado sincronizado de reservas, holds (${holdMinutes} min) y bloqueos para ${accommodationName}.`
               : checkIn && !checkOut
-              ? "Ahora selecciona tu fecha de salida (check-out)."
-              : "Selecciona tu fecha de llegada (check-in) y salida."}
+              ? "Ahora selecciona tu fecha de salida (check-out · hasta 12:00 hrs)."
+              : "Selecciona tu fecha de ingreso (15:00 hrs) y salida (12:00 hrs)."}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -120,7 +127,7 @@ export function AvailabilityCalendar({
             type="button"
             onClick={() => shiftMonth(-1)}
             aria-label="Mes anterior"
-            className="p-2 rounded-full border border-ocean/15 text-ocean hover:bg-ocean hover:text-sand transition-colors"
+            className="p-2 rounded-full border border-ocean/15 text-ocean hover:bg-ocean hover:text-sand transition-colors cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -128,7 +135,7 @@ export function AvailabilityCalendar({
             type="button"
             onClick={() => shiftMonth(1)}
             aria-label="Mes siguiente"
-            className="p-2 rounded-full border border-ocean/15 text-ocean hover:bg-ocean hover:text-sand transition-colors"
+            className="p-2 rounded-full border border-ocean/15 text-ocean hover:bg-ocean hover:text-sand transition-colors cursor-pointer"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -162,18 +169,21 @@ export function AvailabilityCalendar({
                 if (!iso) return <div key={`empty-${idx}`} className="h-10" />;
 
                 const dayNum = Number(iso.split("-")[2]);
-                const state = getDayState(iso);
+                const state = getDayState(accommodationId, iso);
                 const isStart = checkIn === iso;
                 const isEnd = checkOut === iso;
-                const previewEnd = !checkOut && checkIn && hoverDate && hoverDate > checkIn ? hoverDate : checkOut;
-                const isInRange =
-                  Boolean(checkIn && previewEnd && iso > checkIn && iso < previewEnd);
+                const previewEnd =
+                  !checkOut && checkIn && hoverDate && hoverDate > checkIn
+                    ? hoverDate
+                    : checkOut;
+                const isInRange = Boolean(
+                  checkIn && previewEnd && iso > checkIn && iso < previewEnd
+                );
 
-                // Un día ocupado puede ser fecha de check-out si las noches anteriores están libres
                 const canBeCheckout =
                   !readOnly &&
                   Boolean(checkIn && !checkOut && iso > checkIn) &&
-                  isRangeAvailable(checkIn!, iso).ok;
+                  isRangeAvailable(accommodationId, checkIn!, iso).ok;
 
                 const disabled =
                   readOnly ||
@@ -194,15 +204,15 @@ export function AvailabilityCalendar({
                       state === "OCCUPIED"
                         ? "Reservado / Ocupado"
                         : state === "HOLD"
-                        ? "Bloqueo temporal (30 min en curso)"
+                        ? `Bloqueo temporal (${holdMinutes} min en curso)`
                         : state === "BLOCKED"
-                        ? "Bloqueado por anfitriona"
+                        ? "Bloqueado por administración"
                         : state === "PAST"
                         ? "Fecha pasada"
                         : "Disponible"
                     }
                     className={cn(
-                      "relative h-10 rounded-xl text-sm font-medium transition-all flex items-center justify-center",
+                      "relative h-11 sm:h-10 rounded-xl text-sm font-medium transition-all flex items-center justify-center touch-manipulation",
                       isStart || isEnd
                         ? "bg-forest text-sand font-semibold shadow-md ring-2 ring-forest/30"
                         : isInRange
@@ -248,7 +258,7 @@ export function AvailabilityCalendar({
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-md bg-amber-200 border border-amber-400" />
-            Bloqueo 30 min
+            Bloqueo {holdMinutes} min
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-md bg-ocean/15" />
@@ -263,7 +273,7 @@ export function AvailabilityCalendar({
           <button
             type="button"
             onClick={() => onSelectRange(null, null)}
-            className="text-sunset font-semibold hover:underline"
+            className="text-sunset font-semibold hover:underline cursor-pointer"
           >
             Limpiar fechas
           </button>

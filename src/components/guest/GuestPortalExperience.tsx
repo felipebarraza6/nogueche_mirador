@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
+  Ban,
   Building2,
   Check,
   CheckCircle2,
@@ -17,7 +18,6 @@ import {
   Lock,
   MapPin,
   MessageCircle,
-  PawPrint,
   Radio,
   Search,
   ShieldCheck,
@@ -28,13 +28,14 @@ import {
   Wifi,
 } from "lucide-react";
 import { useNoguecheStore } from "@/lib/api/demo-store";
+import { ScrollReveal } from "@/components/motion/ScrollReveal";
 import {
   BREAKFAST_OPTIONS,
   FRENCH_PRESS_STEPS,
   HOUSE_RULES,
   LOCAL_GUIDE_PLACES,
+  OFFICIAL_POLICIES,
   OTHER_AMENITIES,
-  PET_FRIENDLY_RULES,
   PROPERTY_INFO,
   TV_BOX_STEPS,
 } from "@/lib/guide-data";
@@ -42,11 +43,8 @@ import { cn, formatCLP, formatDateLongES } from "@/lib/utils";
 import { CABIN_MEDIA } from "@/lib/media";
 import type { ReservationStatus } from "@/lib/api/types";
 
-const STATUS_META: Record<
-  ReservationStatus,
-  { label: string; tone: string }
-> = {
-  HOLD: { label: "Bloqueo temporal 30 min", tone: "bg-amber-100 text-amber-900" },
+const STATUS_META: Record<ReservationStatus, { label: string; tone: string }> = {
+  HOLD: { label: "Bloqueo temporal 15 min", tone: "bg-amber-100 text-amber-900" },
   PAYMENT_PROCESSING: {
     label: "Verificando pago Flow",
     tone: "bg-sky-100 text-sky-900",
@@ -68,9 +66,9 @@ const STATUS_META: Record<
 };
 
 const GUIDE_TABS = [
-  { id: "acceso", label: "Acceso & Wi-Fi" },
-  { id: "cabana", label: "Uso de la Cabaña" },
-  { id: "reglas", label: "Reglas & Pet Friendly" },
+  { id: "acceso", label: "Acceso & Caja de Llaves" },
+  { id: "cabana", label: "Uso del Alojamiento" },
+  { id: "reglas", label: "Normas & Políticas" },
   { id: "entorno", label: "Guía Cobquecura" },
 ] as const;
 
@@ -87,8 +85,8 @@ export function GuestPortalExperience() {
   const [guideTab, setGuideTab] = useState<(typeof GUIDE_TABS)[number]["id"]>("acceso");
   const [placeFilter, setPlaceFilter] = useState<string>("all");
   const [copiedWifi, setCopiedWifi] = useState(false);
+  const [copiedLockbox, setCopiedLockbox] = useState(false);
 
-  // Balance transfer state
   const [showBalanceTransfer, setShowBalanceTransfer] = useState(false);
   const [balanceRef, setBalanceRef] = useState("");
   const [balanceBank, setBalanceBank] = useState("Banco Estado");
@@ -124,18 +122,21 @@ export function GuestPortalExperience() {
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div>
             <span className="text-xs uppercase tracking-[0.26em] text-cream font-semibold">
-              Portal del Huésped · Guía Digital 2026
+              Portal del Huésped · Ingreso Autónomo
             </span>
             <h1 className="font-serif text-4xl sm:text-5xl font-medium mt-1">
               Gestiona tu estadía en Mirador de Nogueche
             </h1>
             <p className="text-mist/85 text-sm mt-2 max-w-xl">
-              Consulta el estado de tus pagos, abona el 50% restante para desbloquear las
-              indicaciones de llegada y explora nuestra guía local de Cobquecura.
+              Consulta el estado de tu reserva, paga el saldo pendiente del 50% para liberar el
+              código de la caja de seguridad de llaves y revisa nuestra guía de Cobquecura.
             </p>
           </div>
 
-          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+          <form
+            onSubmit={handleSearch}
+            className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto"
+          >
             <div className="relative flex-1 lg:w-64">
               <Search className="w-4 h-4 text-cream/60 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -173,7 +174,15 @@ export function GuestPortalExperience() {
                   : "bg-white/10 text-cream/85 hover:bg-white/20"
               )}
             >
-              {r.code} ({r.status === "CONFIRMED_FULL" ? "100%" : r.status === "CONFIRMED_DEPOSIT" ? "50%" : r.status === "PENDING_TRANSFER_VALIDATION" ? "Transf." : "Hold"})
+              {r.code} · {r.accommodationName} (
+              {r.status === "CONFIRMED_FULL"
+                ? "100%"
+                : r.status === "CONFIRMED_DEPOSIT"
+                ? "50%"
+                : r.status === "PENDING_TRANSFER_VALIDATION"
+                ? "Transf."
+                : "Hold"}
+              )
             </button>
           ))}
         </div>
@@ -183,16 +192,19 @@ export function GuestPortalExperience() {
       {reservation ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left: Status + Payment Balance */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="rounded-3xl bg-white border border-ocean/10 p-6 shadow-sm space-y-5">
+          <ScrollReveal y={24} className="lg:col-span-5 space-y-6">
+            <div className="rounded-3xl glass-card p-6 space-y-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <span className="text-[11px] uppercase tracking-widest text-ocean/55 font-semibold">
-                    Reserva {reservation.code}
+                  <span className="text-[11px] uppercase tracking-widest text-sunset font-bold block">
+                    {reservation.accommodationName} · {reservation.code}
                   </span>
                   <h2 className="font-serif text-3xl font-semibold text-ocean">
                     {reservation.guestName}
                   </h2>
+                  <p className="text-xs text-ocean/60 mt-0.5">
+                    {reservation.guestDocument} · {reservation.guestCity}
+                  </p>
                 </div>
                 <span
                   className={cn(
@@ -207,7 +219,7 @@ export function GuestPortalExperience() {
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="rounded-2xl bg-sand/70 p-3.5">
                   <span className="text-ocean/55 uppercase tracking-wider text-[10px] block">
-                    Check-in · 14:00 hrs
+                    Check-in · 15:00 hrs
                   </span>
                   <span className="font-semibold text-ocean mt-0.5 block capitalize">
                     {formatDateLongES(reservation.checkIn)}
@@ -215,7 +227,7 @@ export function GuestPortalExperience() {
                 </div>
                 <div className="rounded-2xl bg-sand/70 p-3.5">
                   <span className="text-ocean/55 uppercase tracking-wider text-[10px] block">
-                    Check-out · 13:00 hrs
+                    Check-out · 12:00 hrs
                   </span>
                   <span className="font-semibold text-ocean mt-0.5 block capitalize">
                     {formatDateLongES(reservation.checkOut)}
@@ -227,8 +239,18 @@ export function GuestPortalExperience() {
               <div className="rounded-2xl bg-sand/60 p-4 space-y-2 text-sm border border-ocean/8">
                 <div className="flex justify-between text-ocean/75">
                   <span>
-                    Estadía ({reservation.nights} noches · {reservation.adults} adultos
-                    {reservation.hasChildOverTwo ? " + 1 niño" : ""})
+                    {reservation.accommodationName} ({reservation.nights} noches ·{" "}
+                    {reservation.adults} ad.
+                    {reservation.children7Plus > 0
+                      ? ` + ${reservation.children7Plus} (7+)`
+                      : ""}
+                    {reservation.children2To6 > 0
+                      ? ` + ${reservation.children2To6} (2–6)`
+                      : ""}
+                    {reservation.childrenUnder2 > 0
+                      ? ` + ${reservation.childrenUnder2} (<2)`
+                      : ""}
+                    )
                   </span>
                   <span className="font-semibold">{formatCLP(reservation.totalAmount)}</span>
                 </div>
@@ -253,12 +275,12 @@ export function GuestPortalExperience() {
                 <div className="rounded-2xl bg-sunset/10 border border-sunset/25 p-5 space-y-4">
                   <div>
                     <p className="text-xs uppercase tracking-wider font-bold text-sunset flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" /> Pago del 50% restante
+                      <Sparkles className="w-3.5 h-3.5" /> Pago del saldo pendiente (50%)
                     </p>
                     <p className="text-xs text-ocean/80 mt-1">
                       Completa el saldo de{" "}
-                      <strong>{formatCLP(reservation.balanceDue)}</strong> antes de tu llegada
-                      para desbloquear automáticamente la ubicación exacta, llaves y Wi-Fi.
+                      <strong>{formatCLP(reservation.balanceDue)}</strong> antes del ingreso
+                      para liberar automáticamente el código de la caja de seguridad de llaves.
                     </p>
                   </div>
 
@@ -357,7 +379,7 @@ export function GuestPortalExperience() {
               </div>
             </div>
 
-            {/* Host Contact & Reviews */}
+            {/* Host Contact */}
             <div className="rounded-3xl bg-ocean text-sand p-6 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3.5">
@@ -368,7 +390,7 @@ export function GuestPortalExperience() {
                   />
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.2em] text-cream">
-                      Tu Anfitriona
+                      Administración · Contacto Oficial
                     </p>
                     <h3 className="font-serif text-2xl">{PROPERTY_INFO.hostName}</h3>
                   </div>
@@ -376,8 +398,8 @@ export function GuestPortalExperience() {
                 <MessageCircle className="w-6 h-6 text-cream shrink-0" />
               </div>
               <p className="text-xs text-mist/85">
-                Estoy feliz de ayudarte en cualquier momento de tu estadía. Avísanos por
-                mensaje tu hora de llegada o si deseas agregar desayunos.
+                Para consultas sobre horarios, modificaciones (mín. 7 días antes) o asistencia
+                durante tu estadía, escríbenos por WhatsApp.
               </p>
               <div className="flex flex-wrap gap-2">
                 <a
@@ -400,31 +422,40 @@ export function GuestPortalExperience() {
                 </a>
               </div>
             </div>
-          </div>
+          </ScrollReveal>
 
-          {/* Right: Access Gate + Interactive Digital Guide 2026 */}
-          <div className="lg:col-span-7 space-y-6">
-            {/* Guide Navigation Tabs */}
+          {/* Right: Access Gate + Digital Guide */}
+          <ScrollReveal y={24} delay={0.08} className="lg:col-span-7 space-y-6">
             <div className="flex flex-wrap gap-2">
-              {GUIDE_TABS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setGuideTab(t.id)}
-                  className={cn(
-                    "px-4 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all cursor-pointer",
-                    guideTab === t.id
-                      ? "bg-forest text-sand shadow-md"
-                      : "bg-white text-ocean/75 border border-ocean/10 hover:bg-sand"
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
+              {GUIDE_TABS.map((t) => {
+                const active = guideTab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setGuideTab(t.id)}
+                    className={cn(
+                      "relative px-4 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-colors cursor-pointer",
+                      active
+                        ? "text-sand"
+                        : "glass-card-subtle text-ocean/75 hover:bg-white/80"
+                    )}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="guest-guide-tab"
+                        transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                        className="absolute inset-0 rounded-full bg-forest shadow-md -z-0"
+                      />
+                    )}
+                    <span className="relative z-10">{t.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             <AnimatePresence mode="wait">
-              {/* TAB 1: ACCESS GATE + WI-FI */}
+              {/* TAB 1: ACCESS GATE + LOCKBOX CODE + WI-FI */}
               {guideTab === "acceso" && (
                 <motion.div
                   key="tab-acceso"
@@ -435,10 +466,10 @@ export function GuestPortalExperience() {
                 >
                   <div
                     className={cn(
-                      "rounded-3xl p-6 sm:p-8 border shadow-sm",
+                      "rounded-3xl p-6 sm:p-8",
                       reservation.accessUnlocked
-                        ? "bg-white border-emerald-200"
-                        : "bg-amber-50/70 border-amber-200"
+                        ? "glass-card ring-1 ring-emerald-200/70"
+                        : "bg-amber-50/75 backdrop-blur-md border border-amber-200/80 shadow-xs"
                     )}
                   >
                     <div className="flex items-center justify-between gap-4 mb-4">
@@ -459,7 +490,7 @@ export function GuestPortalExperience() {
                         </div>
                         <div>
                           <span className="text-[11px] uppercase tracking-widest font-semibold text-sunset">
-                            Indicaciones de Acceso y Llaves
+                            Ingreso Autónomo · Caja de Seguridad de Llaves
                           </span>
                           <h3 className="font-serif text-2xl sm:text-3xl font-semibold text-ocean">
                             {reservation.accessUnlocked
@@ -472,12 +503,46 @@ export function GuestPortalExperience() {
 
                     {reservation.accessUnlocked ? (
                       <div className="space-y-5 mt-5">
+                        {/* Lockbox Code Banner */}
+                        <div className="rounded-2xl bg-atmosphere-sunset text-sand p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.2em] text-cream font-semibold flex items-center gap-1.5">
+                              <KeyRound className="w-4 h-4" /> Código Caja de Seguridad (
+                              {reservation.accommodationName})
+                            </p>
+                            <p className="text-xs text-mist/85 mt-1">
+                              Ingresa este código en la caja de seguridad junto al acceso para
+                              retirar las llaves desde las 15:00 hrs.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard?.writeText(reservation.lockboxCode || "4829#");
+                              setCopiedLockbox(true);
+                              setTimeout(() => setCopiedLockbox(false), 1800);
+                            }}
+                            title="Copiar código de caja de seguridad"
+                            className="font-mono text-3xl font-bold tracking-widest px-5 py-2.5 rounded-2xl bg-abyss/60 hover:bg-abyss/80 text-cream border border-cream/25 shrink-0 flex items-center justify-center gap-3 transition-colors cursor-pointer"
+                          >
+                            <span>{reservation.lockboxCode || "4829#"}</span>
+                            {copiedLockbox ? (
+                              <Check className="w-5 h-5 text-emerald-300" />
+                            ) : (
+                              <Copy className="w-4 h-4 opacity-75" />
+                            )}
+                          </button>
+                        </div>
+
                         <div className="rounded-2xl bg-sand/70 p-5 border border-ocean/8 space-y-2">
                           <p className="text-xs uppercase tracking-wider font-semibold text-forest flex items-center gap-1.5">
-                            <MapPin className="w-4 h-4" /> Dirección Exacta
+                            <MapPin className="w-4 h-4" /> Ubicación Exacta
                           </p>
                           <p className="text-sm font-semibold text-ocean">
                             {PROPERTY_INFO.address}
+                          </p>
+                          <p className="text-xs text-ocean/70">
+                            A {PROPERTY_INFO.beachDistance} · A {PROPERTY_INFO.townDistance}.
                           </p>
                           <a
                             href={PROPERTY_INFO.mapsHref}
@@ -485,7 +550,7 @@ export function GuestPortalExperience() {
                             rel="noreferrer"
                             className="inline-flex items-center gap-2 mt-2 px-4 py-2 rounded-full bg-sunset text-sand text-xs font-semibold hover:bg-forest transition-colors"
                           >
-                            Guíame hasta aquí (Google Maps)
+                            Abrir en Google Maps
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         </div>
@@ -496,11 +561,17 @@ export function GuestPortalExperience() {
                               <Wifi className="w-4 h-4" /> Conexión Wi-Fi
                             </p>
                             <p className="text-sm">
-                              Red: <strong className="text-cream">{PROPERTY_INFO.wifi.network}</strong>
+                              Red:{" "}
+                              <strong className="text-cream">
+                                {PROPERTY_INFO.wifi.network}
+                              </strong>
                             </p>
                             <div className="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2 text-sm">
                               <span>
-                                Clave: <strong className="font-mono">{PROPERTY_INFO.wifi.password}</strong>
+                                Clave:{" "}
+                                <strong className="font-mono">
+                                  {PROPERTY_INFO.wifi.password}
+                                </strong>
                               </span>
                               <button
                                 type="button"
@@ -519,17 +590,16 @@ export function GuestPortalExperience() {
 
                           <div className="rounded-2xl bg-sand/70 p-5 border border-ocean/8 space-y-2 text-xs text-ocean/80">
                             <p className="uppercase tracking-wider text-forest font-semibold flex items-center gap-1.5">
-                              <KeyRound className="w-4 h-4" /> Entrega de Llaves & Check-in
+                              <Clock className="w-4 h-4" /> Horarios de Estadía
                             </p>
                             <p>
-                              El check-in es desde las <strong>14:00 hrs</strong> mediante
-                              formulario de registro al llegar. Envíanos un mensaje antes
-                              de tu llegada para coordinar la recepción.
+                              <strong>Check-in:</strong> desde las 15:00 horas.
                             </p>
                             <p>
-                              Al check-out (<strong>13:00 hrs</strong>): deja las llaves
-                              puestas en la cerradura y toca 1 vez el timbre negro de la
-                              cocina.
+                              <strong>Check-out:</strong> hasta las 12:00 horas.
+                            </p>
+                            <p>
+                              <strong>Silencio:</strong> desde las 23:00 hasta las 08:00 horas.
                             </p>
                           </div>
                         </div>
@@ -538,26 +608,30 @@ export function GuestPortalExperience() {
                       <div className="rounded-2xl bg-white/80 p-5 border border-amber-200 text-sm text-ocean/80 space-y-2">
                         <p className="flex items-center gap-2 font-semibold text-amber-900">
                           <ShieldCheck className="w-4 h-4" />
-                          Política de entrega de acceso
+                          Política de entrega de acceso autónomo
                         </p>
                         <p className="text-xs leading-relaxed">
-                          Por seguridad, la dirección exacta ({`Pasaje El Roble...`}), el
-                          botón directo de Google Maps, las indicaciones de llaves y la
-                          clave Wi-Fi se desbloquean automáticamente en cuanto se confirma
-                          el 50% restante ({formatCLP(reservation.balanceDue)}).
+                          Una vez confirmado el pago del 100% de la estadía (saldo pendiente:{" "}
+                          <strong>{formatCLP(reservation.balanceDue)}</strong>), se liberará
+                          automáticamente el código de acceso a la caja de seguridad que
+                          contiene las llaves, la ubicación exacta en Google Maps y los datos
+                          de Wi-Fi.
                         </p>
                       </div>
                     )}
                   </div>
 
                   {/* Breakfasts reminder */}
-                  <div className="rounded-3xl bg-white border border-ocean/10 p-6">
+                  <div className="rounded-3xl glass-card p-6">
                     <h4 className="font-serif text-2xl font-semibold text-ocean flex items-center gap-2 mb-3">
-                      <Coffee className="w-5 h-5 text-sunset" /> ¿Quieres sumar desayunos a tu estadía?
+                      <Coffee className="w-5 h-5 text-sunset" /> Desayunos opcionales
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {BREAKFAST_OPTIONS.map((b) => (
-                        <div key={b.id} className="rounded-2xl bg-sand/70 p-4 border border-ocean/8">
+                        <div
+                          key={b.id}
+                          className="rounded-2xl bg-sand/70 p-4 border border-ocean/8"
+                        >
                           <div className="flex justify-between items-center mb-1.5">
                             <span className="font-semibold text-sm text-ocean">{b.name}</span>
                             <span className="text-xs font-bold text-sunset">
@@ -572,7 +646,7 @@ export function GuestPortalExperience() {
                 </motion.div>
               )}
 
-              {/* TAB 2: USO DE LA CABAÑA (TV BOX, RADIO, PRENSA FRANCESA) */}
+              {/* TAB 2: USO DEL ALOJAMIENTO */}
               {guideTab === "cabana" && (
                 <motion.div
                   key="tab-cabana"
@@ -581,7 +655,6 @@ export function GuestPortalExperience() {
                   exit={{ opacity: 0, y: -12 }}
                   className="space-y-5"
                 >
-                  {/* French Press */}
                   <div className="rounded-3xl bg-white border border-ocean/10 p-6 sm:p-7">
                     <span className="text-xs uppercase tracking-[0.2em] text-sunset font-semibold">
                       Ritual de Mañana
@@ -591,7 +664,10 @@ export function GuestPortalExperience() {
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {FRENCH_PRESS_STEPS.map((s) => (
-                        <div key={s.step} className="rounded-2xl bg-sand/70 p-4 border border-ocean/8">
+                        <div
+                          key={s.step}
+                          className="rounded-2xl bg-sand/70 p-4 border border-ocean/8"
+                        >
                           <span className="font-serif text-2xl text-sunset font-semibold">
                             {s.step}
                           </span>
@@ -602,7 +678,6 @@ export function GuestPortalExperience() {
                     </div>
                   </div>
 
-                  {/* TV Box & Radio */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="rounded-3xl bg-white border border-ocean/10 p-6">
                       <h4 className="font-serif text-2xl font-semibold text-ocean flex items-center gap-2 mb-3">
@@ -632,7 +707,7 @@ export function GuestPortalExperience() {
                 </motion.div>
               )}
 
-              {/* TAB 3: REGLAS & PET FRIENDLY */}
+              {/* TAB 3: NORMAS DE CONVIVENCIA & POLÍTICAS OFICIALES */}
               {guideTab === "reglas" && (
                 <motion.div
                   key="tab-reglas"
@@ -643,7 +718,7 @@ export function GuestPortalExperience() {
                 >
                   <div className="rounded-3xl bg-white border border-ocean/10 p-6 sm:p-7">
                     <h3 className="font-serif text-3xl font-semibold text-ocean mb-4">
-                      Reglas de la Casa
+                      Normas de Convivencia y Uso de Espacios
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {HOUSE_RULES.map((rule) => (
@@ -652,7 +727,7 @@ export function GuestPortalExperience() {
                           className="rounded-2xl bg-sand/70 p-4 border border-ocean/8"
                         >
                           <span className="text-[11px] font-bold text-sunset tracking-widest">
-                            REGLA {rule.code}
+                            NORMA {rule.code}
                           </span>
                           <p className="font-semibold text-sm text-ocean mt-0.5">
                             {rule.title}
@@ -665,19 +740,36 @@ export function GuestPortalExperience() {
                     </div>
                   </div>
 
-                  <div className="rounded-3xl bg-forest text-sand p-6 sm:p-7 space-y-3">
+                  <div className="rounded-3xl bg-ocean text-sand p-6 sm:p-7 space-y-4">
                     <h4 className="font-serif text-2xl text-cream flex items-center gap-2">
-                      <PawPrint className="w-5 h-5" /> Normativa Pet Friendly
+                      <Ban className="w-5 h-5 text-sunset-glow" />{" "}
+                      {OFFICIAL_POLICIES.noPetsPolicy.title}
                     </h4>
-                    <ul className="space-y-1.5 text-xs sm:text-sm text-mist/90">
-                      {PET_FRIENDLY_RULES.conditions.map((c) => (
-                        <li key={c}>• {c}</li>
+                    <p className="text-xs sm:text-sm text-mist/90 leading-relaxed">
+                      {OFFICIAL_POLICIES.noPetsPolicy.summary}
+                    </p>
+                    <p className="text-xs text-cream font-semibold pt-2 border-t border-white/15">
+                      {OFFICIAL_POLICIES.noPetsPolicy.exception}
+                    </p>
+                  </div>
+
+                  <div className="rounded-3xl bg-white border border-ocean/10 p-6 sm:p-7 space-y-4">
+                    <h4 className="font-serif text-2xl font-semibold text-ocean">
+                      Cancelación y Modificación de Reservas
+                    </h4>
+                    <div className="rounded-2xl bg-sand/70 p-4 space-y-2 text-xs sm:text-sm">
+                      {OFFICIAL_POLICIES.cancellationTable.map((row) => (
+                        <div key={row.window} className="flex justify-between gap-2">
+                          <span className="text-ocean/80">{row.window}</span>
+                          <strong className="text-ocean">{row.refund}</strong>
+                        </div>
+                      ))}
+                    </div>
+                    <ul className="list-disc pl-5 text-xs text-ocean/75 space-y-1">
+                      {OFFICIAL_POLICIES.modificationRules.map((m) => (
+                        <li key={m}>{m}</li>
                       ))}
                     </ul>
-                    <p className="text-[11px] text-mist/70 pt-2 border-t border-white/15">
-                      Razas no admitidas por seguridad y convivencia:{" "}
-                      {PET_FRIENDLY_RULES.restrictedBreeds.join(", ")}.
-                    </p>
                   </div>
                 </motion.div>
               )}
@@ -750,7 +842,7 @@ export function GuestPortalExperience() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </ScrollReveal>
         </div>
       ) : (
         <div className="rounded-3xl bg-white border border-ocean/10 p-10 text-center">
